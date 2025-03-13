@@ -1,6 +1,6 @@
 Directed Acyclic Graph of factors affecting protein turnover
 ===
-Jitao David Zhang
+Jitao David Zhang, March 2025
 
 The original graphviz file was produced for a Bioinfo Club presentation in 2022. For the review, I updated the graph by adding new factors, and for simplicity, removing edges between factors. The resulting file, `turnover-2025.gv`, contains the full directed acyclic graph, though most of the edges are hidden.
 
