@@ -157,6 +157,56 @@ which is also known as [Little's Law](https://en.wikipedia.org/wiki/Little%27s_l
 
 In the review, when not otherwise indicated, we use protein half-life to express protein's turnover.
 
+## A two-compartment PK/PD model of enzymic target degradation by an irreversible covalent inhbitor
+
+The model was created by Andres Olivares. It assumes oral dosing and two comparments (central and peripheral). The parameters that we used are:
+
+Inspired by daroczig's comments, especially the clue that pander translates to pandoc's pipe syntax, I took a closer look at the pander documentation and found reference to cat. After some experimentation, I found the winner:
+
+```{r table2, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+tabl <- "
+| Parameter (unit) | Value |
+|------------------|:-----:|
+|Dose (mg/kg) |5|
+|Molecular Weight (g/Mol) |800|
+|Target abundance (mg) |100|
+|Free fraction |50%|
+|Target half-life|1, 10, 100, 1000|
+|Absorption rate constant (ka, 1/hr) |1|
+|Elimination clearance (CL, ml/min/kg) |10|
+|Volume of central compartment (V1, L1/kg) |2|
+|Volume of peripheral compartment (V2, L/kg) |1|
+|Intercompartmental clearance (Q, mL/min/kg) |5|
+|Inactivation rate constant (k_inact, 1/min) |0.05|
+|KI (nM) | 	10|
+|Dosing interval (hours) |24|
+|Number of doses |10|
+"
+cat(tabl)
+```
+
+```{r pk_pd_covalent_prep}
+cov_pk_pd <- read.xlsx("data/2025-03-Target-degradation-covalent-binding-oral-PK-PD-Andres.xlsx") %>%
+  dplyr::rename(turnover=`Protein.half-life`) %>%
+  dplyr::mutate(turnover=factor(turnover, levels=c(1, 10, 100, 1000)))
+
+```
+
+```{r pk_pd_covalent_plot, fig.height=3, fig.width=5}
+cov_pk_pd_plot <- ggplot(cov_pk_pd,
+                         aes(x=time, y=Enzyme, col=turnover)) +
+  scale_color_manual(values=c("1"="#d7191c",
+                              "10"="#f46d43",
+                              "100"="#74add1",
+                              "1000"="#2c7bb6"),
+                     name="Target\nhalf-life [h]") +
+  geom_line(lwd=1) +
+  xlab("Time [h]") +
+  ylab(bquote("Enzyme abundance /" ~ E[0] ~ "[%]")) +
+  ylim(0,100)
+print(cov_pk_pd_plot)
+```
+
 # Disclaimer
 
 Through out the code I have used large-language models to generate part of the code. I have checked their accuracy and edited them if necessary.
