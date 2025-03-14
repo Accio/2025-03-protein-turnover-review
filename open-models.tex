@@ -34,8 +34,8 @@
 
 \draw[myinarrow] (L) -- node[right] {\textit{In}} ++(0, 1);
 \draw[myoutarrow] (L) -- node[right] {$Cl_{(S)}$} ++(0,-1);
-\draw[myinarrow] (R) -- node[right] {$k_{s}$} ++(0, 1);
-\draw[myoutarrow] (R) -- node[right] {$k_{d}$} ++(0,-1);
+\draw[myinarrow] (R) -- node[right] {$k_{syn}$} ++(0, 1);
+\draw[myoutarrow] (R) -- node[right] {$k_{deg}$} ++(0,-1);
 \draw[myoutarrow] (RL) -- node[right] {$k_{e(\text{RL)}}$} ++(0,-1);
 
 % reaction 2: open, irreversible systems
@@ -51,8 +51,8 @@
 
 \draw[myinarrow] (L2) -- node[right] {\textit{In}} ++(0, 1);
 \draw[myoutarrow] (L2) -- node[right] {$Cl_{(S)}$} ++(0,-1);
-\draw[myinarrow] (R2) -- node[right] {$k_{s}$} ++(0, 1);
-\draw[myoutarrow] (R2) -- node[right] {$k_{d}$} ++(0,-1);
+\draw[myinarrow] (R2) -- node[right] {$k_{syn}$} ++(0, 1);
+\draw[myoutarrow] (R2) -- node[right] {$k_{deg}$} ++(0,-1);
 \draw[myoutarrow] (RL2) -- node[right] {$k_{e(\text{RL)}}$} ++(0,-1);
 
 % reaction 3: Ligand-facilitated target removal
@@ -77,8 +77,8 @@
 
 \draw[myinarrow] (L3) -- node[right] {\textit{In}} ++(0, 1);
 \draw[myoutarrow] (L3) -- node[right] {$Cl_{(S)}$} ++(0,-1);
-\draw[myinarrow] (R3) -- node[right] {$k_{s}$} ++(0, 1);
-\draw[myoutarrow] (R3) -- node[right] {$k_{d}$} ++(0,-1);
+\draw[myinarrow] (R3) -- node[right] {$k_{syn}$} ++(0, 1);
+\draw[myoutarrow] (R3) -- node[right] {$k_{deg}$} ++(0,-1);
 
 \draw[myoutarrow] (L3r) to[out=-80,in=-110,looseness=0.6] (L3);
 
@@ -105,8 +105,8 @@
   ($(Er.west)+(-0.05,0.075)$);
 
 \draw[myinarrow] (S) -- node[right] {\textit{In}} ++(0, 1);
-\draw[myinarrow] (E) -- node[right] {$k_{s}$} ++(0, 1);
-\draw[myoutarrow] (E) -- node[right] {$k_{d}$} ++(0,-1);
+\draw[myinarrow] (E) -- node[right] {$k_{syn}$} ++(0, 1);
+\draw[myoutarrow] (E) -- node[right] {$k_{deg}$} ++(0,-1);
 \draw[myoutarrow] (Er) to[out=-80,in=-110,looseness=0.6] (E);
 
 % reaction 5: irreversible metabolic system
@@ -132,8 +132,8 @@
   ($(Einact.west)+(-0.05,0.075)$);
   
 \draw[myinarrow] (S2) -- node[right] {\textit{In}} ++(0, 1);
-\draw[myinarrow] (E2) -- node[right] {$k_{s}$} ++(0, 1);
-\draw[myoutarrow] (E2) -- node[right] {$k_{d}$} ++(0,-1);
+\draw[myinarrow] (E2) -- node[right] {$k_{syn}$} ++(0, 1);
+\draw[myoutarrow] (E2) -- node[right] {$k_{deg}$} ++(0,-1);
 
 % text annotations
 \node[texts, above=1.0cm of L] {Reversible pharmacological system};

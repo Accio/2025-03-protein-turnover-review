@@ -46,52 +46,52 @@ theme_set(theme_light(base_size=13))
 
 ## Definition of protein turnover
 
-Assuming that the protein follows zero-order synthesis with constant production rate $k_s$, and first-order degradation with rate $k_d$. The ordinary differential equation describing protein concentration changes with regard to $t$ is
+Assuming that the protein follows zero-order synthesis with constant production rate $k_{syn}$, and first-order degradation with rate $k_{deg}$. The ordinary differential equation describing protein concentration changes with regard to $t$ is
 
-$$ \frac{dP}{dt} = k_s - k_dP(t) $$.
+$$ \frac{dP}{dt} = k_{syn} - k_{deg}P(t) $$.
 
 The closed form solution, assuming that $ P(0) = 0$, is
 
-$$ P(t) = \frac{k_s}{k_d}(1-e^{-k_dt}) $$
+$$ P(t) = \frac{k_{syn}}{k_{deg}}(1-e^{-k_{deg}t}) $$
 Here the assumption is that protein is synthesized and degraded with a constant synthesis rate and a constant degradation rate following exponential decay. The constant exponential-decay rate suggests that proteins, old or new, have the same probability at any time to be degraded. In particular, even newly synthesized proteins are degraded, so that the accumulation of newly synthesized protein is not linear (as a simple zero-order synthesis rate would suggest), but rather sigmoidal (due to the decay term).
 
 McShane et al. (2016) showed that this model is probably valid for about 90% of the proteins, at least in mouse fibroblasts and human retinal pigmented epithelial cell lines: for the rest 10% proteins show non-exponential decay, i.e. they are less stable in the first hours in their life, and becomes more stable later.
 
 Assuming the zero-order synthesis and first-order degradation model, and assuming that the protein abundance does not change during the period during which we investigate its turnover, then during this time interval the total synthesis equals the total degradation, and the half-life, which is defined by the time when half of the protein species consists of old protein while the other half consists of newly synthesized molecules after the labeling, can be solved analytically:
 
-$$ t_{1/2} = \frac{ln(2)}{k_d} $$
+$$ t_{1/2} = \frac{ln(2)}{k_{deg}} $$
 
-The faster the degradation rate $k_d$, the shorter the turnover.
+The faster the degradation rate $k_{deg}$, the shorter the turnover.
 
 At the same time, according to the model, the homeostasis concentration $P$ is given as 
 
-$$ P = \frac{k_s}{k_d} $$.
+$$ P = \frac{k_{syn}}{k_{deg}} $$.
 
 Therefore,
 
-$$ k_s = \frac{ln(2) P}{t_{1/2}} $$.
+$$ k_{syn} = \frac{ln(2) P}{t_{1/2}} $$.
 
-This means that $k_d$ and $k_s$ can be deduced from the synthesis/degradation curves of the labeling experiment if the model assumptions hold.
+This means that $k_{deg}$ and $k_{syn}$ can be deduced from the synthesis/degradation curves of the labeling experiment if the model assumptions hold.
 
 
 ```{r homeostasis_prep}
 # Define parameters
-k_s <- 8     # Zero-order synthesis rate
-k_d <- 0.16    # First-order degradation rate
-p_homeo <- k_s/k_d # asymptotic steady-state (homeostasis) level
+k_syn <- 8     # Zero-order synthesis rate
+k_deg <- 0.16    # First-order degradation rate
+p_homeo <- k_syn/k_deg # asymptotic steady-state (homeostasis) level
 time <- seq(0, 35, length.out = 1000)
 spike_time <- 10
 
 ## newly 
 new_prot_func <- function(t) {
   eff_time <- t - spike_time
-  res <- k_s/k_d * (1 - exp(-k_d * eff_time))
+  res <- k_syn/k_deg * (1 - exp(-k_deg * eff_time))
   res[eff_time < 0] <- NA
   return(res)
 }
 old_prot_func <- function(t) {
   eff_time <- t - spike_time
-  res <- p_homeo * exp(-k_d * eff_time)
+  res <- p_homeo * exp(-k_deg * eff_time)
   res[eff_time < 0] <- p_homeo
   return(res)
 }
@@ -101,7 +101,7 @@ halflife_t_ind <- which.min(abs(new_prot - old_prot))
 halflife_t <- time[halflife_t_ind]
 halflife_new_prot <- new_prot_func(halflife_t)
 halflife_old_prot <- old_prot_func(halflife_t)
-halflife_avg_prot <- (halflife_new_prot + halflife_old_prot)/2 ## should be exactly half of k_s/k_d
+halflife_avg_prot <- (halflife_new_prot + halflife_old_prot)/2 ## should be exactly half of k_syn/k_deg
 
 prot_df <- data.frame(time=time,
                       old=old_prot,
@@ -147,15 +147,32 @@ print(homeostasis)
 
 A similar concept describing protein turnover is the mean lifetime $\tau$, which is defined by the average length of time a protein species persists. Mathematically, it can be shown that it is the time required for a protein to be reduced to $1/e$ of its initial quantity. The relationship between mean lifetime, degradation rate, and half-life can be expressed as 
 
-$$ \tau = \frac{1}{k_d} = \frac{t_{1/2}}{ln(2)} $$.
+$$ \tau = \frac{1}{k_{deg}} = \frac{t_{1/2}}{ln(2)} $$.
 
 Using mean life time simplifies the expression of the relationship between the synthesis rate and the protein abundance
 
-$$ P = k_s \tau $$,
+$$ P = k_{syn} \tau $$,
 
 which is also known as [Little's Law](https://en.wikipedia.org/wiki/Little%27s_law) in mathematics.
 
 In the review, when not otherwise indicated, we use protein half-life to express protein's turnover.
+
+## Open pharmacological models without ligand recycling
+
+Dynamics of the free concentrations of the ligand $L$, the free binding sites of target receptor $R$), and the ligand-target complex $LR$ can be described by the following ODE system:
+
+$$
+\frac{dL}{dt} = \frac{In}{V} - \frac{CL_{(L)}}{V}L - k_{on} \cdot L \times R + k_{off} \cdot RL \\
+\frac{dR}{dt} = k_{syn} - k_{deg} \cdot R - k_{on} \cdot L \cdot R + k_{off} \cdot RL \\
+\frac{dRL}{dt} = k_{on} \cdot L \cdot R - k_{off} \cdot RL - k_{e(RL)} \cdot RL
+$$
+At the steady state (abbreviated as 'ss'), the solutions of the system are
+
+$$
+R_{ss} = \frac{k_{syn}}{k_{deg}}\frac{EC_{50}}{L_{ss} + EC_{50}} = R_0 \cdot (1-\frac{L_{ss}}{L_{ss}+ EC_{50}}) \\
+RL_{ss} = \frac{k_{syn}}{k_{e(RL)}}\frac{L_{ss}}{L_{ss}+ EC_{50}} = R_0 \cdot \frac{k_{deg}}{k_{e(RL)}} \cdot \frac{L_{ss}}{L_{ss}+ EC_{50}}  \\
+EC_{50} = \frac{}
+$$
 
 ## A two-compartment PK/PD model of enzymic target degradation by an irreversible covalent inhbitor
 
