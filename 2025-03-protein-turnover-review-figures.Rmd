@@ -74,11 +74,17 @@ $$ k_{syn} = \frac{ln(2) P}{t_{1/2}} $$.
 This means that $k_{deg}$ and $k_{syn}$ can be deduced from the synthesis/degradation curves of the labeling experiment if the model assumptions hold.
 
 
+```{r}
+homeostasis_abundance <- function(k_syn, k_deg) {
+  return(k_syn/k_deg)
+}
+```
+
 ```{r homeostasis_prep}
 # Define parameters
 k_syn <- 8     # Zero-order synthesis rate
 k_deg <- 0.16    # First-order degradation rate
-p_homeo <- k_syn/k_deg # asymptotic steady-state (homeostasis) level
+p_homeo <- homeostasis_abundance(k_syn, k_deg) # asymptotic steady-state (homeostasis) level
 time <- seq(0, 35, length.out = 1000)
 spike_time <- 10
 
@@ -169,10 +175,71 @@ $$
 At the steady state (abbreviated as 'ss'), the solutions of the system are
 
 $$
-R_{ss} = \frac{k_{syn}}{k_{deg}}\frac{EC_{50}}{L_{ss} + EC_{50}} = R_0 \cdot (1-\frac{L_{ss}}{L_{ss}+ EC_{50}}) \\
-RL_{ss} = \frac{k_{syn}}{k_{e(RL)}}\frac{L_{ss}}{L_{ss}+ EC_{50}} = R_0 \cdot \frac{k_{deg}}{k_{e(RL)}} \cdot \frac{L_{ss}}{L_{ss}+ EC_{50}}  \\
-EC_{50} = \frac{}
+\begin{aligned}
+K_d &= \frac{k_{\mathit{off}}}{k_{\mathit{on}}} \\
+R_{0} &= \frac{k_{syn}}{k_{deg}} \\
+R_{ss} &= R_0 \cdot (1-\frac{L_{ss}}{L_{ss}+ EC_{50}}) \\
+RL_{ss} &= R_0 \cdot \frac{k_{deg}}{k_{e(RL)}} \cdot \frac{L_{ss}}{L_{ss}+ EC_{50}}  \\
+E_{0} &\propto \frac{k_\mathit{syn}}{k_\mathit{deg}}~\text{or constitutive activity} \\
+E_{\mathit{max}} &= \rho \cdot \frac{k_\mathit{syn}}{k_\mathit{e(RL)}} \\
+EC_{50,~\text{reversible}} &=  \frac{k_{deg}}{k_{e(RL)}}  \frac{k_{\mathit{off}}+k_{e(RL)}}{k_{\mathit{on}}} \\
+EC_{50,~\text{irreversible}} &\propto  \frac{k_{deg}}{k_{\textit{on}}} \\
+\mathit{Response} &= E_{0} + \frac{E_{\mathit{max}} \cdot L}{EC_{50} + L}
+\end{aligned}
 $$
+Note that in cellular models where proteins are constantly synthesized and degraded, the potency parameter $EC_{50}$ differs both from the dissociation constant ($K_d=\frac{k_{off}}{k_{on}}$) and from the Michaelis-Menton constant (frac{k_{off}+k_{e(RL)}}{k_{on}}): it contains both the target turnover ($k_{deg}$), and target-complex kinetics ($k_{e(RL)}).
+
+## Simulation examples about $k_{\mathit{syn}}$, $k_{\mathit{deg}}$ and  $k_{\mathit{e(RL)}} affect in vivo curves
+
+For k_on and k_off values, we take median values of a set of marketed drugs as collected by [Dahl and Akerud (Drug Discovery Today, 2013)](https://www.sciencedirect.com/science/article/pii/S1359644613000688).
+
+```{r}
+dahl_2013 <- read_tsv("data/Dahl-2013.txt")
+parse_dahl_number <- function(str) {
+  as.numeric(gsub("−", "-", str))
+}
+dahl_2013 <- dahl_2013 %>%
+  mutate("kon (M−1 s−1)b" = parse_dahl_number(`kon (M−1 s−1)b`),
+         "koff (s−1)" = parse_dahl_number(`koff (s−1)`))
+k_on <- dahl_2013 %>% pull("kon (M−1 s−1)b")
+print(k_on)
+median_k_on <- median(k_on, na.rm=TRUE) ## 7.6E5
+k_off <- dahl_2013 %>% pull("koff (s−1)")
+print(k_off)
+median_k_off <- median(k_off, na.rm=TRUE) ## 2.8
+```
+
+```{r}
+response_func <- function(k_syn=8, k_deg=0.16, k_eRL=0.5,
+                          k_on=7.6E5, k_off=2.8, rho=0.8,
+                          L_start=1E-9, L_end=1, length.out=100) {
+  r_0 <- homeostasis_abundance(k_syn, k_deg)
+  E_0 <- 0
+  E_max <- rho * k_syn/k_eRL
+  EC_50 <- k_deg/k_eRL * (k_off + k_eRL)/k_on
+  ligand_pConc <- seq(-log10(L_start), -log10(L_end), 
+                     length.out=length.out)
+  ligand_conc <- 10^-ligand_pConc
+  response <- E_0 + E_max * ligand_conc/(EC_50 + ligand_conc)
+  res <- data.frame(k_syn=k_syn,
+                    k_deg=k_deg,
+                    k_eRL=k_eRL,
+                    k_on=k_on,
+                    k_off=k_off,
+                    rho=rho,
+                    ligand_conc=ligand_conc,
+                    ligand_pConc=ligand_pConc,
+                    response=response)
+  return(res)
+}
+test_response <- response_func()
+test2_response <- response_func(k_syn=16)
+test_response_comb <- rbind(test_response, test2_response) %>%
+  arrange(k_syn, ligand_conc)
+ggplot(test_response_comb,aes(x=ligand_conc, y=response, col=factor(k_syn))) +
+  scale_x_log10() +
+  geom_line()
+```
 
 ## A two-compartment PK/PD model of enzymic target degradation by an irreversible covalent inhbitor
 
