@@ -210,11 +210,12 @@ median_k_off <- median(k_off, na.rm=TRUE) ## 2.8
 ```
 
 ```{r}
-response_func <- function(k_syn=8, k_deg=0.16, k_eRL=0.5,
+response_func <- function(k_syn=2E7, k_deg=1E-9, k_eRL=1E-9,
                           k_on=7.6E5, k_off=2.8, rho=0.8,
-                          L_start=1E-9, L_end=1, length.out=100) {
+                          E0_r0_ratio=0.01,
+                          L_start=1E-12, L_end=1, length.out=100) {
   r_0 <- homeostasis_abundance(k_syn, k_deg)
-  E_0 <- 0
+  E_0 <- r_0 * E0_r0_ratio
   E_max <- rho * k_syn/k_eRL
   EC_50 <- k_deg/k_eRL * (k_off + k_eRL)/k_on
   ligand_pConc <- seq(-log10(L_start), -log10(L_end), 
@@ -232,14 +233,60 @@ response_func <- function(k_syn=8, k_deg=0.16, k_eRL=0.5,
                     response=response)
   return(res)
 }
-test_response <- response_func()
-test2_response <- response_func(k_syn=16)
-test_response_comb <- rbind(test_response, test2_response) %>%
-  arrange(k_syn, ligand_conc)
-ggplot(test_response_comb,aes(x=ligand_conc, y=response, col=factor(k_syn))) +
+```
+
+```{r base_plot}
+base_k_syn <- 2E7
+base_k_deg <- 1E-9
+base_k_eRL <- 1E-9
+base_response <-  response_func(k_syn = base_k_syn, k_deg=base_k_deg, k_eRL=base_k_eRL)
+base_response_plot <- ggplot(base_response,
+                             aes(x=ligand_conc, y=response)) +
   scale_x_log10() +
   geom_line()
+print(base_response_plot)
 ```
+
+
+```{r k_syn_plot}
+high_ksyn_response <- response_func(k_syn=base_k_syn*1.05)
+low_ksyn_response <- response_func(k_syn=base_k_syn*0.95)
+ksyn_response <- rbind(base_response, high_ksyn_response, low_ksyn_response) %>%
+  arrange(k_syn, ligand_conc)
+syn_col <- c("#B2182B", "black", "#2066AC")
+ksyn_plot <- ggplot(ksyn_response,aes(x=ligand_conc, y=response, col=factor(k_syn))) +
+  scale_color_manual(values=syn_col, name="k_syn") +
+  scale_x_log10() +
+  geom_line()
+print(ksyn_plot)
+```
+
+```{r k_deg}
+high_kdeg_response <- response_func(k_deg=base_k_deg*10)
+low_kdeg_response <- response_func(k_deg=base_k_deg*.1)
+kdeg_response <- rbind(base_response, high_kdeg_response, low_kdeg_response) %>%
+  arrange(k_deg, ligand_conc)
+deg_col <- c("#B2182B", "black", "#2066AC")
+kdeg_plot <- ggplot(kdeg_response,aes(x=ligand_conc, y=response, col=factor(k_deg))) +
+  scale_color_manual(values=deg_col, name="k_deg") +
+  scale_x_log10() +
+  geom_line()
+print(kdeg_plot)
+```
+
+```{r k_eRL}
+high_keRL_response <- response_func(k_eRL=base_k_eRL*2)
+low_keRL_response <- response_func(k_eRL=base_k_eRL*.5)
+keRL_response <- rbind(base_response, high_keRL_response, low_keRL_response) %>%
+  arrange(k_eRL, ligand_conc)
+eRL_col <- c("#B2182B", "black", "#2066AC")
+keRL_plot <- ggplot(keRL_response,aes(x=ligand_conc, y=response, col=factor(k_eRL))) +
+  scale_color_manual(values=eRL_col, name="k_eRL") +
+  scale_x_log10() +
+  geom_line()
+print(keRL_plot)
+```
+
 
 ## A two-compartment PK/PD model of enzymic target degradation by an irreversible covalent inhbitor
 
