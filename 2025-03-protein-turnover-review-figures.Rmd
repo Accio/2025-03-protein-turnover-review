@@ -42,8 +42,10 @@ library(zoo)
 library(Vennerable)
 library(ggalluvial)
 library(gridExtra)
-theme_set(theme_light(base_size=13))
+source("2025-03-protein-turnover-review-funcs.R")
+theme_set(theme_light(base_size=14))
 ```
+
 
 ## Definition of protein turnover
 
@@ -73,13 +75,6 @@ Therefore,
 $$ k_{syn} = \frac{ln(2) P}{t_{1/2}} $$.
 
 This means that $k_{deg}$ and $k_{syn}$ can be deduced from the synthesis/degradation curves of the labeling experiment if the model assumptions hold.
-
-
-```{r}
-homeostasis_abundance <- function(k_syn, k_deg) {
-  return(k_syn/k_deg)
-}
-```
 
 ```{r homeostasis_prep}
 # Define parameters
@@ -238,11 +233,33 @@ response_func <- function(k_syn=10, k_deg=1E-6, k_eRL=1E-6,
 }
 ```
 
+```{r SM_setting}
+base_sm_k_syn <- 1
+base_sm_k_deg <- 1E-6
+base_sm_k_eRL <- 1E-6
+base_sm_k_on <- 7.6E5
+base_sm_k_off <- 2.8
+```
+
+```{r AB_setting}
+## Simulation, Table 1, Gabrielsson & Peletier
+base_ab_k_syn <- 0.11  ##  (mg/L)/h
+base_ab_k_deg <- 0.0089 ## h-1
+base_ab_k_eRL <- 0.003 ## h-1
+base_ab_k_on <- 0.091 ## (mg/L)h
+base_ab_k_off <- 0.001
+base_ab_L_start <- 10^-4
+base_ab_L_end <- 10^2
+base_ab_L_vals <- 10^seq(log10(base_ab_L_start), log10(base_ab_L_end), length.out=100)
+var_ab_labels <- c("High", "Mid", "Low")
+```
+
 ```{r base_plot}
-base_k_syn <- 1
-base_k_deg <- 1E-6
-base_k_eRL <- 1E-6
-base_response <-  response_func(k_syn = base_k_syn, k_deg=base_k_deg, k_eRL=base_k_eRL)
+base_response <-  response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
 base_response_plot <- ggplot(base_response,
                              aes(x=ligand_conc, y=response)) +
   scale_x_log10() +
@@ -252,75 +269,236 @@ print(base_response_plot)
 
 
 ```{r k_syn_plot}
-high_ksyn_response <- response_func(k_syn=base_k_syn*1.5)
-low_ksyn_response <- response_func(k_syn=base_k_syn*0.5)
+high_ksyn_response <- response_func(k_syn=base_ab_k_syn*2, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+low_ksyn_response <- response_func(k_syn=base_ab_k_syn*0.5, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
 ksyn_response <- rbind(base_response, high_ksyn_response, low_ksyn_response) %>%
-  arrange(k_syn, ligand_conc)
+  arrange(k_syn, ligand_conc) %>%
+  mutate(k_syn_factor=factor(k_syn,
+                             levels=unique(sort(k_syn, decreasing=TRUE))))
 syn_col <- c("#B2182B", "black", "#2066AC")
-ksyn_plot <- ggplot(ksyn_response,aes(x=ligand_conc, y=response, col=factor(k_syn))) +
-  scale_color_manual(values=syn_col, name="k_syn") +
+ksyn_plot <- ggplot(ksyn_response,aes(x=ligand_conc, y=response, col=k_syn_factor)) +
+  scale_color_manual(values=syn_col, name=expression(k[syn]),
+                     labels=var_ab_labels) +
   geom_vline(data=ksyn_response,
-             mapping=aes(xintercept= EC_50, col=factor(k_syn)), lty=2) +
+             mapping=aes(xintercept= EC_50, col=k_syn_factor), lty=2) +
   scale_x_log10() +
   geom_line() +
-  xlab("Ligand concentration [M]") + ylab("Respones [A.U.]")
+  theme(legend.position = "top", 
+        legend.text = element_text(size=14),
+        axis.text = element_text(size=13), 
+        axis.title = element_text(size=15)) +
+  xlab("Ligand concentration [uM]") + ylab("Respones [A.U.]")
 print(ksyn_plot)
 ```
 
 ```{r k_deg}
-high_kdeg_response <- response_func(k_deg=base_k_deg*4)
-low_kdeg_response <- response_func(k_deg=base_k_deg*.25)
+high_kdeg_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg*2,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+low_kdeg_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg*0.5,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
 kdeg_response <- rbind(base_response, high_kdeg_response, low_kdeg_response) %>%
-  arrange(k_deg, ligand_conc)
+  arrange(k_deg, ligand_conc) %>%
+  mutate(k_deg_factor=factor(k_deg,
+                             levels=unique(sort(k_deg, decreasing=TRUE))))
 deg_col <- c("#B2182B", "black", "#2066AC")
-kdeg_plot <- ggplot(kdeg_response,aes(x=ligand_conc, y=response, col=factor(k_deg))) +
-  scale_color_manual(values=deg_col, name="k_deg") +
+kdeg_plot <- ggplot(kdeg_response,aes(x=ligand_conc, y=response, col=k_deg_factor)) +
+  scale_color_manual(values=deg_col, name=expression(k[deg]),
+                     labels=var_ab_labels) +
   geom_vline(data=kdeg_response,
-             mapping=aes(xintercept= EC_50, col=factor(k_deg)), lty=2) +
+             mapping=aes(xintercept= EC_50, col=k_deg_factor), lty=2) +
   scale_x_log10() +
   geom_line() +
-  xlab("Ligand concentration [M]") + ylab("Respones [A.U.]")
+   theme(legend.position = "top", 
+        legend.text = element_text(size=14),
+        axis.text = element_text(size=13), 
+        axis.title = element_text(size=15)) +
+  xlab("Ligand concentration [uM]") + ylab("Respones [A.U.]")
 print(kdeg_plot)
 ```
 
 ```{r, kdeg_ksyn}
-high_kdeg_ksyn_response <- response_func(k_deg=base_k_deg*2, k_syn=base_k_syn*2)
-low_kdeg_ksyn_response <- response_func(k_deg=base_k_deg*.5, k_syn=base_k_syn*.5)
+high_kdeg_ksyn_response <- response_func(k_syn=base_ab_k_syn*2, k_deg=base_ab_k_deg*2,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+low_kdeg_ksyn_response <- response_func(k_syn=base_ab_k_syn*0.5, k_deg=base_ab_k_deg*0.5,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
 deg_syn_col <- c("#B2182B", "black", "#2066AC")
 kdeg_ksyn_response <- rbind(base_response, high_kdeg_ksyn_response, low_kdeg_ksyn_response) %>%
   arrange(k_deg, k_syn, ligand_conc) %>%
-  mutate(k_deg_syn=interaction(factor(k_deg),
-                               factor(k_syn), sep = "/"))
+  mutate(k_deg_syn=interaction(factor(k_deg,
+                                      levels=unique(sort(k_deg, decreasing=TRUE))),
+                               factor(k_syn,
+                                      levels=unique(sort(k_syn, decreasing=TRUE))),
+                               sep = "/", drop=TRUE))
 kdeg_ksyn_plot <- ggplot(kdeg_ksyn_response,aes(x=ligand_conc, y=response, col=k_deg_syn)) +
   geom_vline(data=kdeg_ksyn_response,
              mapping=aes(xintercept= EC_50, col=k_deg_syn), lty=2) +
-  scale_color_manual(values=deg_syn_col, name="k_deg/k_syn") +
+  scale_color_manual(values=deg_syn_col, 
+                     name=expression(paste("Fixing ",
+                                           k[syn], "/", k[deg],
+                                           ", varying ", k[deg])),
+                     labels=var_ab_labels, position="bottom")+
   scale_x_log10() +
   geom_line() +
-  xlab("Ligand concentration [M]") + ylab("Respones [A.U.]")
+  theme(legend.position = "top", 
+        legend.text = element_text(size=13),
+        axis.text = element_text(size=13), 
+        axis.title = element_text(size=15)) +
+  xlab("Ligand concentration [uM]") + ylab("Respones [A.U.]")
 print(kdeg_ksyn_plot)
 ```
 
 ```{r k_eRL}
-high_keRL_response <- response_func(k_eRL=base_k_eRL*4)
-low_keRL_response <- response_func(k_eRL=base_k_eRL*.25)
+high_keRL_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL*2, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+low_keRL_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL*0.5, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
 keRL_response <- rbind(base_response, high_keRL_response, low_keRL_response) %>%
-  arrange(k_eRL, ligand_conc)
+  arrange(k_eRL, ligand_conc)  %>%
+  mutate(k_eRL_factor=factor(k_eRL,
+                             levels=unique(sort(k_eRL, decreasing=TRUE))))
 eRL_col <- c("#B2182B", "black", "#2066AC")
-keRL_plot <- ggplot(keRL_response,aes(x=ligand_conc, y=response, col=factor(k_eRL))) +
-  scale_color_manual(values=eRL_col, name="k_eRL") +
+keRL_plot <- ggplot(keRL_response,aes(x=ligand_conc, y=response, col=k_eRL_factor)) +
+  scale_color_manual(values=eRL_col, 
+                     name=expression(e[RL]),
+                     labels=var_ab_labels) +
     geom_vline(data=keRL_response,
-             mapping=aes(xintercept= EC_50, col=factor(k_eRL)), lty=2) +
+             mapping=aes(xintercept= EC_50, col=k_eRL_factor), lty=2) +
   scale_x_log10() +
   geom_line() +
-  xlab("Ligand concentration [M]") + ylab("Respones [A.U.]")
+  theme(legend.position = "top", 
+        legend.text = element_text(size=14),
+        axis.text = element_text(size=13), 
+        axis.title = element_text(size=15)) +
+  xlab("Ligand concentration [uM]") + ylab("Respones [A.U.]")
 print(keRL_plot)
 ```
 
-```{r, fig.height=6, fig.width=9}
-grid.arrange(ksyn_plot, kdeg_plot,kdeg_ksyn_plot, keRL_plot,
-             nrow=2,
-             top="Effects of varying k_syn, k_deg, and k_e(RL) on response")
+```{r, fig.height=11, fig.width=11}
+grid.arrange(ksyn_plot+ylim(0, 65), 
+             kdeg_plot+ylim(0, 65),
+             kdeg_ksyn_plot+ylim(0, 65), 
+             keRL_plot+ylim(0, 65),
+             nrow=2)
+```
+
+## Total receptor abundance
+
+Inspired by Figure 4 of Gabrielsson and Peletier (2017)
+
+```{r}
+k_eRL_k_deg_ratios <- c(0.7, 1, 1.4)
+ratio_new_levels <- c("k_eRL < k_deg",
+                      "k_eRL = k_deg",
+                      "k_eRL > k_deg")
+names(ratio_new_levels) <- k_eRL_k_deg_ratios
+base_ab_rl_ss <- lapply(k_eRL_k_deg_ratios, 
+                        function(ratio) {
+                          curr_k_eRL <- base_ab_k_deg * ratio
+                          rl_ss <- rl_ss(base_ab_L_vals,
+                                         k_on=base_ab_k_on,
+                                         k_off=base_ab_k_off,
+                                         k_syn=base_ab_k_syn,
+                                         k_deg=base_ab_k_deg,
+                                         k_eRL=curr_k_eRL)
+                          r_0 <- r_0(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg)
+                          r_star <- r_star(k_syn=base_ab_k_syn,
+                                           k_deg=base_ab_k_deg,
+                                           k_eRL=curr_k_eRL)
+                          l_50 <- l_50(k_on=base_ab_k_on,
+                                       k_off=base_ab_k_off,
+                                       k_eRL=curr_k_eRL,
+                                       k_deg=base_ab_k_deg)
+                          res <- data.frame(l_ss=base_ab_L_vals,
+                                            k_eRL_k_deg_ratio=ratio,
+                                            r_0=r_0,
+                                            r_star=r_star,
+                                            l_50=l_50,
+                                            type="RL_ss",
+                                            value=rl_ss)
+                          return(res)
+                        })
+base_ab_r_ss <- lapply(k_eRL_k_deg_ratios, 
+                       function(ratio) {
+                         curr_k_eRL <- base_ab_k_deg * ratio
+                         r_ss  <- r_ss(base_ab_L_vals,
+                                       k_on=base_ab_k_on,
+                                       k_off=base_ab_k_off,
+                                       k_syn=base_ab_k_syn,
+                                       k_deg=base_ab_k_deg,
+                                       k_eRL=curr_k_eRL)
+                         r_0 <- r_0(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg)
+                         r_star <- r_star(k_syn=base_ab_k_syn,
+                                          k_deg=base_ab_k_deg,
+                                          k_eRL=curr_k_eRL)
+                         l_50 <- l_50(k_on=base_ab_k_on,
+                                      k_off=base_ab_k_off,
+                                      k_eRL=curr_k_eRL,
+                                      k_deg=base_ab_k_deg)
+                         res <- data.frame(l_ss=base_ab_L_vals,
+                                           k_eRL_k_deg_ratio=ratio,
+                                           r_0=r_0,
+                                           r_star=r_star,
+                                           l_50=l_50,
+                                           type="R_ss",
+                                           value=r_ss)
+                         return(res)
+                       })
+base_ab_ss <- rbind(do.call(rbind, base_ab_rl_ss),
+                    do.call(rbind, base_ab_r_ss)) %>%
+  mutate(type=factor(type, levels=c("RL_ss", "R_ss"))) %>%
+  mutate(k_eRL_k_deg_factor = relevels(factor(k_eRL_k_deg_ratio),
+                                       ratio_new_levels)) %>%
+  arrange(k_eRL_k_deg_ratio, l_ss)
+ss_col <- c("RL_ss"="#CC0010", "R_ss"="black")
+```
+
+```{r base_ab_ss_plot, fig.height=3, fig.width=8}
+base_ab_ss_plot <- ggplot(base_ab_ss,
+                          aes(x=l_ss, y=value, col=type)) +
+    scale_color_manual(values=ss_col, 
+                       name="",
+                     labels=c(expression({RL}[ss]), 
+                              expression(R[ss]))) +
+  facet_wrap(~k_eRL_k_deg_factor) +
+  geom_hline(aes(yintercept=r_0), lty=2) +
+  geom_hline(aes(yintercept=r_star), lty=2, col="#CC0010") +
+  geom_vline(aes(xintercept=l_50), col="darkgray") +
+  annotate("text", x=0.1, y=15, label=expression(EC[50]), hjust=1)+
+  scale_x_log10() +
+  geom_line() +
+  theme(legend.position = "right", 
+        legend.text = element_text(size=14),
+        axis.text = element_text(size=13), 
+        axis.title = element_text(size=15)) +
+  xlab(expression(paste("Steady-state ligand concentration ",
+                        L[ss], " in log scale"))) + ylab("Concentration [A.U.]")
+print(base_ab_ss_plot)
 ```
 
 ## A two-compartment PK/PD model of enzymic target degradation by an irreversible covalent inhbitor
