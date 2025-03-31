@@ -46,3 +46,30 @@ r_ss <- function(l_ss,
   res <- r_0 * L_50/(l_ss + L_50)
   return(res)
 }
+
+response_func <- function(k_syn=10, k_deg=1E-6, k_eRL=1E-6,
+                          k_on=7.6E5, k_off=2.8, rho=0.8,
+                          E0_r0_ratio=0.1,
+                          L_start=1E-12, L_end=1, length.out=100) {
+  r_0 <- homeostasis_abundance(k_syn, k_deg)
+  E_0 <- r_0 * E0_r0_ratio
+  E_max <- rho * k_syn/k_eRL
+  EC_50 <- k_deg/k_eRL * (k_off + k_eRL)/k_on
+  ligand_pConc <- seq(-log10(L_start), -log10(L_end), 
+                      length.out=length.out)
+  ligand_conc <- 10^-ligand_pConc
+  response <- E_0 + E_max * ligand_conc/(EC_50 + ligand_conc)
+  res <- data.frame(k_syn=k_syn,
+                    k_deg=k_deg,
+                    k_eRL=k_eRL,
+                    k_on=k_on,
+                    k_off=k_off,
+                    rho=rho,
+                    E_max=E_max,
+                    E_0 = E_0,
+                    EC_50=EC_50,
+                    ligand_conc=ligand_conc,
+                    ligand_pConc=ligand_pConc,
+                    response=response)
+  return(res)
+}

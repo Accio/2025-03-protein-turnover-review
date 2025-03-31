@@ -27,6 +27,8 @@ params:
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE, 
+                      fig.path="figures/protein-turnover-",
+                      dev = c("png", "pdf"),
                       fig.height=6, fig.width=6)
 library(ribiosUtils)
 library(ribiosIO)
@@ -205,34 +207,6 @@ print(k_off)
 median_k_off <- median(k_off, na.rm=TRUE) ## 2.8
 ```
 
-```{r}
-response_func <- function(k_syn=10, k_deg=1E-6, k_eRL=1E-6,
-                          k_on=7.6E5, k_off=2.8, rho=0.8,
-                          E0_r0_ratio=0.1,
-                          L_start=1E-12, L_end=1, length.out=100) {
-  r_0 <- homeostasis_abundance(k_syn, k_deg)
-  E_0 <- r_0 * E0_r0_ratio
-  E_max <- rho * k_syn/k_eRL
-  EC_50 <- k_deg/k_eRL * (k_off + k_eRL)/k_on
-  ligand_pConc <- seq(-log10(L_start), -log10(L_end), 
-                     length.out=length.out)
-  ligand_conc <- 10^-ligand_pConc
-  response <- E_0 + E_max * ligand_conc/(EC_50 + ligand_conc)
-  res <- data.frame(k_syn=k_syn,
-                    k_deg=k_deg,
-                    k_eRL=k_eRL,
-                    k_on=k_on,
-                    k_off=k_off,
-                    rho=rho,
-                    E_max=E_max,
-                    EC_50=EC_50,
-                    ligand_conc=ligand_conc,
-                    ligand_pConc=ligand_pConc,
-                    response=response)
-  return(res)
-}
-```
-
 ```{r SM_setting}
 base_sm_k_syn <- 1
 base_sm_k_deg <- 1E-6
@@ -260,13 +234,123 @@ base_response <-  response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
                                 k_off=base_ab_k_off,
                                 L_start=base_ab_L_start,
                                 L_end=base_ab_L_end)
-base_response_plot <- ggplot(base_response,
+base_response_prop <- data.frame(E_0=unique(base_response$E_0),
+                                 E_max=unique(base_response$E_max),
+                                 E_0_add_max=unique(base_response$E_max + base_response$E_0),
+                                 x_min=min(base_response$ligand_conc),
+                                 y_min=min(base_response$response),
+                                 EC_50=unique(base_response$EC_50)) %>%
+  mutate(E_at_EC_50=E_0_add_max/2)
+base_response_plot_xlim <- c(1E-4, 1E7)
+base_response_plot_ylim <- c(-6, base_response_prop$E_0_add_max * 1.08)
+base_response_plot_textblue <- "#004495"
+base_response_plot_textred <- "#B2182B"
+base_response_plot_textmagenta <- "#54278F"
+base_response_plot_textgrey <- "#252525"
+base_response_rootplot <- ggplot(base_response,
                              aes(x=ligand_conc, y=response)) +
-  scale_x_log10() +
-  geom_line()
-print(base_response_plot)
+  scale_x_log10(limits=base_response_plot_xlim, 
+                breaks=waiver(), expand=c(0,0),
+                labels=NULL) +
+  scale_y_continuous(limits=base_response_plot_ylim,
+                     expand=c(0, 0)) +
+  geom_line(lwd=1.1) +
+  geom_hline(data=base_response_prop,
+             aes(yintercept=E_0), lty=2) +
+  geom_hline(data=base_response_prop,
+             aes(yintercept=E_0_add_max), lty=2) +
+  geom_segment(data=base_response_prop,
+               aes(x=x_min, xend=EC_50,
+                   y=E_at_EC_50,
+                   yend=E_at_EC_50), lty=2, inherit.aes = FALSE) +
+  geom_segment(data=base_response_prop,
+               aes(x=EC_50,
+                   y=base_response_plot_ylim[1], 
+                   yend=E_at_EC_50), lty=2, inherit.aes=FALSE) +
+    ylab("Response") +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.y = element_blank(),
+        axis.line.x = element_line(arrow = grid::arrow(length = unit(0.3, "cm"))),
+        axis.line.y = element_line(arrow = grid::arrow(length = unit(0.3, "cm"))))
+base_response_baseplot <-  base_response_rootplot +
+  annotate("text",
+           x=1E3,
+           y=base_response_prop$E_0_add_max,
+           vjust=1,
+           label=expression(paste(E[max], "=",
+                                  rho %.% frac(k[syn], k[e(RL)]))),
+           size=6, col=base_response_plot_textblue) +
+    annotate("text",
+           x=base_response_plot_xlim[1],
+           y=base_response_prop$E_0,
+           vjust=1, hjust=-0.1,
+           label=expression(paste(E[0] %prop% frac(k[syn], k[deg]),
+                                  " or constitutive activity")),
+           size=6, col=base_response_plot_textblue)
+base_response_reversible_plot <- base_response_baseplot +  
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(EC[50] == frac(k[deg], k[e(RL)]) %.% frac(k[off] + k[e(RL)], k[on])),
+           vjust=0.5, hjust=0,
+           size=6, col=base_response_plot_textred)
+base_response_reversible_plot <- base_response_baseplot +  
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(EC[list(50, rev.)] == frac(k[deg], k[e(RL)]) %.% frac(k[off] + k[e(RL)], k[on])),
+           vjust=0.5, hjust=-0.02,
+           size=6, col=base_response_plot_textred) +
+  xlab("Reversible ligand concentration [log scale]")
+base_response_irreversible_plot <- base_response_baseplot +  
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(EC[list(50, irrev.)] %prop% frac(k[deg], k[on])),
+           vjust=0.5, hjust=-0.02,
+           size=6, col=base_response_plot_textmagenta) +
+    xlab("Irreversible ligand concentration [log scale]")
 ```
 
+```{r closed-reversible, fig.height=4, fig.width=3.2}
+closed_reversible_plot <- base_response_rootplot +
+  scale_x_log10(limits=c(1E-4, 1E4), 
+                breaks=waiver(), expand=c(0,0),
+                labels=NULL) +
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(K[d] == frac(k[off], k[on])),
+           vjust=0.5, hjust=-0.05,
+           size=6, col=base_response_plot_textgrey) +
+    xlab("Ligand concentration [log scale]")
+print(closed_reversible_plot)
+```
+
+```{r closed-irreversible, fig.height=4, fig.width=3.2}
+closed_irreversible_plot <- base_response_rootplot +
+  scale_x_log10(limits=c(1E-4, 1E4), 
+                breaks=waiver(), expand=c(0,0),
+                labels=NULL) +
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(Potency %prop% frac(k[inact], frac(k[off], k[on]))),
+           vjust=1, hjust=0.05,
+           size=6, col=base_response_plot_textgrey) +
+    xlab("Ligand concentration [log scale]")
+print(closed_irreversible_plot)
+```
+
+```{r open-reversible, fig.height=4, fig.width=5}
+print(base_response_reversible_plot)
+```
+
+```{r open-irreversible, fig.height=4, fig.width=5}
+print(base_response_irreversible_plot)
+```
 
 ```{r k_syn_plot}
 high_ksyn_response <- response_func(k_syn=base_ab_k_syn*2, k_deg=base_ab_k_deg,
@@ -533,7 +617,6 @@ cat(tabl)
 cov_pk_pd <- read.xlsx("data/2025-03-Target-degradation-covalent-binding-oral-PK-PD-Andres.xlsx") %>%
   dplyr::rename(turnover=`Protein.half-life`) %>%
   dplyr::mutate(turnover=factor(turnover, levels=c(1, 10, 100, 1000)))
-
 ```
 
 ```{r pk_pd_covalent_plot, fig.height=3, fig.width=5}
@@ -546,7 +629,7 @@ cov_pk_pd_plot <- ggplot(cov_pk_pd,
                      name="Target\nhalf-life [h]") +
   geom_line(lwd=1) +
   xlab("Time [h]") +
-  ylab(bquote("Enzyme abundance /" ~ E[0] ~ "[%]")) +
+  ylab("Target abundance [%]") +
   ylim(0,100)
 print(cov_pk_pd_plot)
 ```
