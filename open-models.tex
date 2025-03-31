@@ -15,8 +15,48 @@
     texts/.style={text width=6cm, align=left}
 ]
 
+% reaction 0: closed, reversible models
+
+\node[species, fill=orange!20] (LC) {L};
+\node[right=0.15cm of LC] (plusC) {$+$};
+\node[species, fill=blue!20, right=0.15cm of plusC] (RC) {R};
+\node[species, fill=green!20, right=1cm of RC] (RLC) {RL};
+
+%--- Reversible arrows with k_on / k_off
+\draw[myleftarrow]
+  ($(RC.east)+(0.1,0.075)$) -- 
+  node[above] {$k_{\mathrm{on}}$}
+  ($(RLC.west)+(-0.05,0.075)$);
+
+\draw[myrightarrow]
+  ($(RLC.west)+(-0.05,-0.075)$) -- 
+  node[below] {$k_{\mathrm{off}}$}
+  ($(RC.east)+(0.1,-0.075)$);
+
+% reaction 0r: closed, irreversible (e.g. covalent) system
+\node[species, fill=orange!20, below=3cm of LC] (LCI) {L};
+\node[right=0.15cm of LCI] (plusCI) {$+$};
+\node[species, fill=blue!20, right=0.15cm of plusCI] (RCI) {R};
+\node[species, fill=green!20, right=1cm of RCI] (RLCI) {R$\cdot$L};
+\node[species, fill=green!20, right=1cm of RLCI] (inactRLCI) {R-L};
+
+\draw[myleftarrow]
+  ($(RCI.east)+(0.1,0.075)$) -- 
+  node[above] {$k_{\mathrm{on}}$}
+  ($(RLCI.west)+(-0.05,0.075)$);
+
+\draw[myrightarrow]
+  ($(RLCI.west)+(-0.05,-0.075)$) -- 
+  node[below] {$k_{\mathrm{off}}$}
+  ($(RCI.east)+(0.1,-0.075)$);
+
+\draw[myleftarrow]
+  ($(RLCI.east)+(0.1,0.075)$) -- 
+  node[above] {$k_{\mathrm{inact}}$}
+  ($(inactRLCI.west)+(-0.05,0.075)$);
+
 % reaction 1: open, reversible systems
-\node[species, fill=orange!20] (L) {L};
+\node[species, fill=orange!20, below=3cm of LCI] (L) {L};
 \node[right=0.15cm of L] (plus) {$+$};
 \node[species, fill=blue!20, right=0.15cm of plus] (R) {R};
 \node[species, fill=green!20, right=1cm of R] (RL) {RL};
@@ -32,28 +72,38 @@
   node[below] {$k_{\mathrm{off}}$}
   ($(R.east)+(0.1,-0.075)$);
 
-\draw[myinarrow] (L) -- node[right] {\textit{In}} ++(0, 1);
+\draw[myinarrow] (L) -- node[right] {$In$} ++(0, 1);
 \draw[myoutarrow] (L) -- node[right] {$Cl_{(S)}$} ++(0,-1);
 \draw[myinarrow] (R) -- node[right] {$k_{syn}$} ++(0, 1);
 \draw[myoutarrow] (R) -- node[right] {$k_{deg}$} ++(0,-1);
-\draw[myoutarrow] (RL) -- node[right] {$k_{e(\text{RL)}}$} ++(0,-1);
+\draw[myoutarrow] (RL) -- node[right] {$k_{e\text{(RL)}}$} ++(0,-1);
 
 % reaction 2: open, irreversible systems
-\node[species, fill=orange!20, below=2.5cm of L] (L2) {L};
+\node[species, fill=orange!20, below=3cm of L] (L2) {L};
 \node[right=0.15cm of L2] (plus2) {$+$};
 \node[species, fill=blue!20, right=0.15cm of plus2] (R2) {R};
-\node[species, fill=green!20, right=1cm of R2] (RL2) {RL};
+\node[species, fill=green!20, right=1cm of R2] (RL2) {R$\cdot$L};
+\node[species, fill=green!20, right=1cm of RL2] (RL2I) {R-L};
 
 \draw[myleftarrow]
   ($(R2.east)+(0.1,0.075)$) -- 
   node[above] {$k_{\mathrm{on}}$}
   ($(RL2.west)+(-0.05,0.075)$);
+\draw[myrightarrow]
+  ($(RL2.west)+(-0.05,-0.075)$) -- 
+  node[below] {$k_{\mathrm{off}}$}
+  ($(R2.east)+(0.1,-0.075)$);
+\draw[myleftarrow]
+  ($(RL2.east)+(0.1,0.075)$) -- 
+  node[above] {$k_{\mathrm{inact}}$}
+  ($(RL2I.west)+(-0.05,0.075)$);
 
-\draw[myinarrow] (L2) -- node[right] {\textit{In}} ++(0, 1);
+\draw[myinarrow] (L2) -- node[right] {$In$} ++(0, 1);
 \draw[myoutarrow] (L2) -- node[right] {$Cl_{(S)}$} ++(0,-1);
 \draw[myinarrow] (R2) -- node[right] {$k_{syn}$} ++(0, 1);
 \draw[myoutarrow] (R2) -- node[right] {$k_{deg}$} ++(0,-1);
-\draw[myoutarrow] (RL2) -- node[right] {$k_{e(\text{RL)}}$} ++(0,-1);
+\draw[myoutarrow] (RL2) -- node[right] {$k_{e\text{(RL)}}$} ++(0,-1);
+\draw[myoutarrow] (RL2I) -- node[right] {$k_{e\text{(RL)}}$} ++(0,-1);
 
 % reaction 3: Ligand-facilitated target removal
 \node[species, fill=orange!20, below=3cm of L2] (L3) {L};
@@ -72,10 +122,10 @@
   ($(R3.east)+(0.1,-0.075)$);
 \draw[myrightarrow]
   ($(RL3.east)+(0.1,0.075)$) -- 
-  node[above] {$k_{e(\text{RL)}}$}
+  node[above] {$k_{e\text{(RL)}}$}
   ($(L3r.west)+(-0.05,0.075)$);
 
-\draw[myinarrow] (L3) -- node[right] {\textit{In}} ++(0, 1);
+\draw[myinarrow] (L3) -- node[right] {$In$} ++(0, 1);
 \draw[myoutarrow] (L3) -- node[right] {$Cl_{(S)}$} ++(0,-1);
 \draw[myinarrow] (R3) -- node[right] {$k_{syn}$} ++(0, 1);
 \draw[myoutarrow] (R3) -- node[right] {$k_{deg}$} ++(0,-1);
@@ -83,7 +133,7 @@
 \draw[myoutarrow] (L3r) to[out=-80,in=-110,looseness=0.6] (L3);
 
 % reaction 4: Reversible metabolic system
-\node[species, fill=orange!20, right=3cm of RL] (S) {S};
+\node[species, fill=orange!20, right=3.5cm of RL] (S) {S};
 \node[right=0.15cm of S] (plus4) {$+$};
 \node[species, fill=blue!20, right=0.15cm of plus4] (E) {E};
 \node[species, fill=green!20, right=1cm of E] (ES) {ES};
@@ -104,13 +154,13 @@
   node[above] {$k_{\mathrm{cat}}$}
   ($(Er.west)+(-0.05,0.075)$);
 
-\draw[myinarrow] (S) -- node[right] {\textit{In}} ++(0, 1);
+\draw[myinarrow] (S) -- node[right] {$In$} ++(0, 1);
 \draw[myinarrow] (E) -- node[right] {$k_{syn}$} ++(0, 1);
 \draw[myoutarrow] (E) -- node[right] {$k_{deg}$} ++(0,-1);
 \draw[myoutarrow] (Er) to[out=-80,in=-110,looseness=0.6] (E);
 
 % reaction 5: irreversible metabolic system
-\node[species, fill=orange!20, below=3cm of S] (S2) {S};
+\node[species, fill=orange!20, right=3.5cm of RL2] (S2) {S};
 \node[right=0.15cm of S2] (plus5) {$+$};
 \node[species, fill=blue!20, right=0.15cm of plus5] (E2) {E};
 \node[species, fill=green!20, right=1cm of E2] (ES2) {ES};
@@ -130,17 +180,22 @@
   ($(ES2.east)+(0.1,0.075)$) -- 
   node[above] {$k_{\mathrm{cat}}$}
   ($(Einact.west)+(-0.05,0.075)$);
-  
-\draw[myinarrow] (S2) -- node[right] {\textit{In}} ++(0, 1);
+
+\draw[myinarrow] (S2) -- node[right] {$In$} ++(0, 1);
 \draw[myinarrow] (E2) -- node[right] {$k_{syn}$} ++(0, 1);
 \draw[myoutarrow] (E2) -- node[right] {$k_{deg}$} ++(0,-1);
 
+
+
+
 % text annotations
-\node[texts, above=1.0cm of L] {Reversible pharmacological system};
-\node[texts, above=1.0cm of L2] {Irreversible pharmacological system};
-\node[texts, above=1.0cm of L3] {Ligand-facilitated target removal (LFTR) pharmacological system};
-\node[texts, above=1.0cm of E] {Reversible metabolic system};
-\node[texts, above=1.0cm of E2] {Irreversible metabolic system};
+\node[texts, above=1.0cm of LC] {Closed reversible pharmacological system};
+\node[texts, above=1.0cm of LCI] {Closed irreversible pharmacological system};
+\node[texts, above=1.0cm of L] {Open reversible pharmacological system};
+\node[texts, above=1.0cm of L2] {Open irreversible pharmacological system};
+\node[texts, above=1.0cm of L3] {Open ligand-facilitated target removal (LFTR) pharmacological system};
+\node[texts, above=1.0cm of E] {Open reversible metabolic system};
+\node[texts, above=1.0cm of E2] {Open irreversible metabolic system};
 
 \end{tikzpicture}
 \end{document}
