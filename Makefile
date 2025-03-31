@@ -1,2 +1,3 @@
 figures/open-models.pdf: open-models.tex
-	pdflatex open-models.tex -output-directory figures
+	pdflatex open-models.tex
+	mv open-models.pdf figures/
