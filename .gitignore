@@ -6,3 +6,5 @@
 *.aux
 .RData
 .Rhistory
+*.png
+*.pdf
