@@ -59,6 +59,7 @@ response_func <- function(k_syn=10, k_deg=1E-6, k_eRL=1E-6,
                       length.out=length.out)
   ligand_conc <- 10^-ligand_pConc
   response <- E_0 + E_max * ligand_conc/(EC_50 + ligand_conc)
+  norm_response <- (response-E_0)/E_max
   res <- data.frame(k_syn=k_syn,
                     k_deg=k_deg,
                     k_eRL=k_eRL,
@@ -70,6 +71,16 @@ response_func <- function(k_syn=10, k_deg=1E-6, k_eRL=1E-6,
                     EC_50=EC_50,
                     ligand_conc=ligand_conc,
                     ligand_pConc=ligand_pConc,
-                    response=response)
+                    response=response,
+                    norm_response=norm_response)
   return(res)
 }
+
+empty_theme <-  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        legend.position = "none",
+        axis.title = element_text(size=15),
+        axis.line.x = element_line(arrow = grid::arrow(length = unit(0.3, "cm"))),
+        axis.line.y = element_line(arrow = grid::arrow(length = unit(0.3, "cm"))))

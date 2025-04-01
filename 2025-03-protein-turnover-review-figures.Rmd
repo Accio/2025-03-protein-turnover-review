@@ -44,6 +44,7 @@ library(zoo)
 library(Vennerable)
 library(ggalluvial)
 library(gridExtra)
+library(cowplot)
 source("2025-03-protein-turnover-review-funcs.R")
 theme_set(theme_light(base_size=14))
 ```
@@ -267,13 +268,7 @@ base_response_rootplot <- ggplot(base_response,
                aes(x=EC_50,
                    y=base_response_plot_ylim[1], 
                    yend=E_at_EC_50), lty=2, inherit.aes=FALSE) +
-    ylab("Response") +
-  theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks = element_blank(),
-        axis.text.y = element_blank(),
-        axis.line.x = element_line(arrow = grid::arrow(length = unit(0.3, "cm"))),
-        axis.line.y = element_line(arrow = grid::arrow(length = unit(0.3, "cm"))))
+    ylab("Response") + empty_theme
 base_response_baseplot <-  base_response_rootplot +
   annotate("text",
            x=1E3,
@@ -352,8 +347,8 @@ print(base_response_reversible_plot)
 print(base_response_irreversible_plot)
 ```
 
-```{r k_syn_plot}
-high_ksyn_response <- response_func(k_syn=base_ab_k_syn*2, k_deg=base_ab_k_deg,
+```{r k_syn_plot, fig.height=5, fig.width=5}
+high_ksyn_response <- response_func(k_syn=base_ab_k_syn*1.5, k_deg=base_ab_k_deg,
                                 k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
                                 k_off=base_ab_k_off,
                                 L_start=base_ab_L_start,
@@ -371,25 +366,32 @@ syn_col <- c("#B2182B", "black", "#2066AC")
 ksyn_plot <- ggplot(ksyn_response,aes(x=ligand_conc, y=response, col=k_syn_factor)) +
   scale_color_manual(values=syn_col, name=expression(k[syn]),
                      labels=var_ab_labels) +
-  geom_vline(data=ksyn_response,
-             mapping=aes(xintercept= EC_50, col=k_syn_factor), lty=2) +
-  scale_x_log10() +
   geom_line() +
-  theme(legend.position = "top", 
-        legend.text = element_text(size=14),
-        axis.text = element_text(size=13), 
-        axis.title = element_text(size=15)) +
-  xlab("Ligand concentration [uM]") + ylab("Respones [A.U.]")
+  geom_segment(aes(x=1E-4, xend=EC_50,
+                   y=E_0 + 0.5*E_max, col=k_syn_factor), lty=2) +
+  geom_segment(aes(y=0, yend=E_0 + 0.5*E_max,
+                   x=EC_50, col=k_syn_factor), lty=2) +
+  geom_segment(x=-3.5,
+               y=40, yend=46,
+               col="black", inherit.aes = FALSE, 
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text", x=2E-3, y=43, vjust=0.5, hjust=0.5, size=6,
+           label=expression(k[syn] %up% "")) +
+  scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
+  scale_y_continuous(limits=c(0, max(ksyn_response$response)*1.05),
+                     expand=c(0,0)) +
+  empty_theme +
+  xlab("Ligand concentration [log scale]") + ylab("Response [A.U.]")
 print(ksyn_plot)
 ```
 
-```{r k_deg}
-high_kdeg_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg*2,
+```{r k_deg, fig.height=4, fig.width=4}
+high_kdeg_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg*8,
                                 k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
                                 k_off=base_ab_k_off,
                                 L_start=base_ab_L_start,
                                 L_end=base_ab_L_end)
-low_kdeg_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg*0.5,
+low_kdeg_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg*0.2,
                                 k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
                                 k_off=base_ab_k_off,
                                 L_start=base_ab_L_start,
@@ -402,25 +404,31 @@ deg_col <- c("#B2182B", "black", "#2066AC")
 kdeg_plot <- ggplot(kdeg_response,aes(x=ligand_conc, y=response, col=k_deg_factor)) +
   scale_color_manual(values=deg_col, name=expression(k[deg]),
                      labels=var_ab_labels) +
-  geom_vline(data=kdeg_response,
-             mapping=aes(xintercept= EC_50, col=k_deg_factor), lty=2) +
-  scale_x_log10() +
+  geom_segment(aes(x=1E-4, xend=EC_50,
+               y=E_0 + 0.5*E_max, col=k_deg_factor), lty=2) +
+  geom_segment(aes(y=0, yend=0.5*E_max+E_0,
+                   x=EC_50, col=k_deg_factor), lty=2) +
+  geom_segment(x=-3.5, xend=-3,
+               y=36, yend=32, col="black", inherit.aes = FALSE, 
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text", x=6E-3, y=32, vjust=0, hjust=0.5, size=6,
+           label=expression(k[deg] %up% "")) +
+  scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
+  scale_y_continuous(limits=c(0, max(kdeg_response$response)*1.05),
+                              expand=c(0,0)) +
   geom_line() +
-   theme(legend.position = "top", 
-        legend.text = element_text(size=14),
-        axis.text = element_text(size=13), 
-        axis.title = element_text(size=15)) +
-  xlab("Ligand concentration [uM]") + ylab("Respones [A.U.]")
+  empty_theme +
+  xlab("Ligand concentration [log scale]") + ylab("Response [A.U.]")
 print(kdeg_plot)
 ```
 
-```{r, kdeg_ksyn}
+```{r, kdeg_ksyn, fig.height=4, fig.width=4}
 high_kdeg_ksyn_response <- response_func(k_syn=base_ab_k_syn*2, k_deg=base_ab_k_deg*2,
                                 k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
                                 k_off=base_ab_k_off,
                                 L_start=base_ab_L_start,
                                 L_end=base_ab_L_end)
-low_kdeg_ksyn_response <- response_func(k_syn=base_ab_k_syn*0.5, k_deg=base_ab_k_deg*0.5,
+low_kdeg_ksyn_response <- response_func(k_syn=base_ab_k_syn*0.5, k_deg=base_ab_k_deg*.5,
                                 k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
                                 k_off=base_ab_k_off,
                                 L_start=base_ab_L_start,
@@ -434,24 +442,29 @@ kdeg_ksyn_response <- rbind(base_response, high_kdeg_ksyn_response, low_kdeg_ksy
                                       levels=unique(sort(k_syn, decreasing=TRUE))),
                                sep = "/", drop=TRUE))
 kdeg_ksyn_plot <- ggplot(kdeg_ksyn_response,aes(x=ligand_conc, y=response, col=k_deg_syn)) +
-  geom_vline(data=kdeg_ksyn_response,
-             mapping=aes(xintercept= EC_50, col=k_deg_syn), lty=2) +
-  scale_color_manual(values=deg_syn_col, 
-                     name=expression(paste("Fixing ",
-                                           k[syn], "/", k[deg],
-                                           ", varying ", k[deg])),
-                     labels=var_ab_labels, position="bottom")+
-  scale_x_log10() +
   geom_line() +
-  theme(legend.position = "top", 
-        legend.text = element_text(size=13),
-        axis.text = element_text(size=13), 
-        axis.title = element_text(size=15)) +
-  xlab("Ligand concentration [uM]") + ylab("Respones [A.U.]")
+  scale_color_manual(values=deg_syn_col, 
+                     name=expression(paste(k[syn], " & ", k[deg])),
+                     labels=var_ab_labels, position="bottom")+
+  geom_segment(aes(x=1E-4, xend=EC_50,
+               y=E_0 + 0.5*E_max, col=k_deg_syn), lty=2) +
+  geom_segment(aes(y=0, yend=0.5*E_max+E_0,
+                   x=EC_50, col=k_deg_syn), lty=2) +
+  geom_segment(x=-3.5, xend=-3.2,
+               y=50, yend=57,
+               col="black", inherit.aes = FALSE, 
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text", x=1E-2, y=52, vjust=0.5, hjust=0.5, size=6,
+           label=expression(k[deg]~"&"~k[syn] %up% "")) +
+  scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
+  scale_y_continuous(limits=c(0, max(kdeg_ksyn_response$response)*1.05),
+                              expand=c(0,0)) +
+  empty_theme +
+  xlab("Ligand concentration [log scale]") + ylab("Response [A.U.]")
 print(kdeg_ksyn_plot)
 ```
 
-```{r k_eRL}
+```{r k_eRL, fig.height=4, fig.width=4}
 high_keRL_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
                                 k_eRL=base_ab_k_eRL*2, k_on=base_ab_k_on,
                                 k_off=base_ab_k_off,
@@ -468,27 +481,111 @@ keRL_response <- rbind(base_response, high_keRL_response, low_keRL_response) %>%
                              levels=unique(sort(k_eRL, decreasing=TRUE))))
 eRL_col <- c("#B2182B", "black", "#2066AC")
 keRL_plot <- ggplot(keRL_response,aes(x=ligand_conc, y=response, col=k_eRL_factor)) +
-  scale_color_manual(values=eRL_col, 
-                     name=expression(e[RL]),
-                     labels=var_ab_labels) +
-    geom_vline(data=keRL_response,
-             mapping=aes(xintercept= EC_50, col=k_eRL_factor), lty=2) +
-  scale_x_log10() +
   geom_line() +
-  theme(legend.position = "top", 
-        legend.text = element_text(size=14),
-        axis.text = element_text(size=13), 
-        axis.title = element_text(size=15)) +
-  xlab("Ligand concentration [uM]") + ylab("Respones [A.U.]")
+  scale_color_manual(values=eRL_col, 
+                     name=expression(k[e(RL)]),
+                     labels=var_ab_labels) +
+  geom_segment(aes(x=1E-4, xend=EC_50,
+               y=E_0 + 0.5*E_max, col=k_eRL_factor), lty=2) +
+  geom_segment(aes(y=0, yend=0.5*E_max+E_0,
+                   x=EC_50, col=k_eRL_factor), lty=2) +
+  geom_segment(x=-3.2, xend=-3.5,
+               y=57, yend=50,
+               col="black", inherit.aes = FALSE, 
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text", x=1E-3, y=50, vjust=0.5, hjust=0, size=6,
+           label=expression(k[e(RL)] %up% "")) +
+  scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
+  scale_y_continuous(limits=c(0, max(keRL_response$response)*1.05),
+                              expand=c(0,0)) +
+  empty_theme +
+  xlab("Ligand concentration [log scale]") + ylab("Response [A.U.]")
 print(keRL_plot)
 ```
 
-```{r, fig.height=11, fig.width=11}
-grid.arrange(ksyn_plot+ylim(0, 65), 
-             kdeg_plot+ylim(0, 65),
-             kdeg_ksyn_plot+ylim(0, 65), 
-             keRL_plot+ylim(0, 65),
-             nrow=2)
+```{r rev_irrev_plot, fig.height=4, fig.width=6}
+base_ab_k_off_k_eRL_ratio <- base_ab_k_off/base_ab_k_eRL ## 1/3
+halfway_rev_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on*5,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+irreversible_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL*100, k_on=base_ab_k_on*20,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+reversible_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL/100, k_on=base_ab_k_on*20,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+rev_irrev_response <- rbind(halfway_rev_response, irreversible_response, reversible_response) %>%
+  arrange(k_eRL, ligand_conc)  %>%
+  mutate(k_eRL_factor=factor(k_eRL,
+                             levels=unique(sort(k_eRL, decreasing=TRUE))))
+rev_irrev_col <- c("#B2182B", "black", "#2066AC")
+rev_irrev_ec50 <- sort(unique(rev_irrev_response$EC_50))
+rev_irrev_plot <- ggplot(rev_irrev_response,
+                         aes(x=ligand_conc, y=(response-E_0)/(E_max), col=k_eRL_factor)) +
+  scale_color_manual(values=rev_irrev_col) +
+  ## geom_vline(data=rev_irrev_response,
+  ##           mapping=aes(xintercept=EC_50, col=k_eRL_factor), lty=2) +
+  annotate("text", 
+           x=rev_irrev_ec50*c(0.25, 1, 4), y=0.5, vjust=0, size=6, col=rev_irrev_col, 
+           label=c(expression(k[e(RL)]~"\u226B"~k[off]),
+                              expression(k[e(RL)] == k[off]),
+                              expression(k[e(RL)]~"\u226A"~k[off]))) +
+  scale_x_log10(limits=c(1E-4,1E1), expand=c(0,0),
+                breaks=rev_irrev_ec50,
+                labels=c(expression(EC[50] %~~% frac(k[deg], k[on])),
+                         expression(EC[50] == frac(k[off] + k[deg], k[on])),
+                         expression(EC[50] %~~% frac(k[deg], k[e(RL)]) %.% frac(k[off], k[on])))) + 
+  scale_y_continuous(limits=c(0, 1), expand=c(0,0), labels=scales::percent) +
+  geom_segment(aes(x=1E-4, xend=EC_50,
+               y=0.5, col=k_eRL_factor), lty=2) +
+  geom_segment(aes(y=0, yend=0.5,
+                   x=EC_50, col=k_eRL_factor), lty=2) +
+  geom_segment(x=-2.5, xend=-3.5,
+               y=0.8, col="black", inherit.aes = FALSE, 
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text", x=1E-3, y=0.825, vjust=0, hjust=0.5,
+           label="irreversible", size=6) +
+  geom_line() +
+  empty_theme + 
+  theme(axis.text.x = element_text(size=12, angle=30, margin=margin(t=18))) +
+  xlab("Ligand concentration [log scale]") + ylab("Normalized response [%]")
+print(rev_irrev_plot)
+```
+
+The following plot is much inspired by figure 8 and figure 9 of Gabrielsson and Horth.
+
+```{r layout_grid_arrange, eval=FALSE}
+ksyn_keg_kRL_layout <- matrix(c(1,2,
+                                1,2,
+                                3,4,
+                                3,4,
+                                5,5,
+                                5,5,
+                                5,5), ncol=2, byrow=TRUE)
+grid.arrange(ksyn_plot, 
+             kdeg_plot,
+             kdeg_ksyn_plot, 
+             keRL_plot,
+             rev_irrev_plot,
+             layout_matrix=ksyn_keg_kRL_layout)
+```
+
+
+```{r ksyn_keg_kRL_plots, fig.height=11, fig.width=8}
+top_rows <- plot_grid(ksyn_plot, kdeg_plot,
+                      kdeg_ksyn_plot, keRL_plot, label_size=18,
+                      nrow=2, ncol=2, labels="AUTO")
+full_plot <- plot_grid(top_rows,
+                       rev_irrev_plot,
+                       rel_heights = c(4,3), label_size=18,
+                       labels=c("", "E"), ncol=1)
+print(full_plot)
 ```
 
 ## Total receptor abundance
