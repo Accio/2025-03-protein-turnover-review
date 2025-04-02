@@ -112,11 +112,11 @@ prot_df <- data.frame(time=time,
                       old=old_prot,
                       new=new_prot)
 new_prot_col <- "#1a9641"
-old_prot_col <- "#fdae61"
+old_prot_col <- "#dc7e2b"
 total_prot_col <- "#2c7bb6"
 ```
 
-```{r homeostasis_plot, fig.height=3, fig.width=5}
+```{r homeostasis_plot, fig.height=4, fig.width=5}
 homeostasis <- ggplot(prot_df, aes(x=time, y=new)) +
   geom_hline(yintercept=0, col="darkgray") +
   geom_line(lwd=1.5, col=new_prot_col) +
@@ -125,25 +125,32 @@ homeostasis <- ggplot(prot_df, aes(x=time, y=new)) +
   geom_vline(xintercept = spike_time, col="darkgray") +
   annotate("text", x=spike_time*0.95, y=p_homeo*0.9, label="Labeling",
            vjust=1, hjust=1, size=6, col="darkgray") +
-  annotate("text", x=17, y=p_homeo*0.97, col=total_prot_col,
-           label="Total", vjust=1, hjust=1, size=6) +
-  annotate("text", x=30, y=new_prot_func(20), col=new_prot_col,
-           label="New protein", size=6, hjust=1, vjust=1) +
-  annotate("text", x=30, y=old_prot_func(20), col=old_prot_col,
-           label="Old protein", size=6, hjust=1, vjust=0) +
+  annotate("text", x=18, y=new_prot_func(18), col=new_prot_col,
+           label="New protein", size=6, hjust=0, vjust=1) +
+##  annotate("text", x=20, y=new_prot_func(20), col=new_prot_col,
+##           label=expression(paste("Synthesis rate ", k[syn], " and")), size=4, hjust=0, vjust=2.2) +
+##  annotate("text", x=20, y=new_prot_func(20), col=new_prot_col,
+##            label=expression(paste("degradation rate ", k[deg])), size=4, hjust=0, vjust=3.3) +
+  annotate("text", x=18, y=old_prot_func(18), col=old_prot_col,
+           label="Old protein", size=6, hjust=0, vjust=0) +
+##  annotate("text", x=20, y=old_prot_func(20), col=old_prot_col,
+##           label=expression(paste("Degradation rate ", k[deg])), size=4, hjust=0, vjust=0) +
   annotate("segment", x=halflife_t, xend=halflife_t,
            y=0, yend=halflife_avg_prot, lty=2, col="black") +
   annotate("segment", x=spike_time, xend=halflife_t,
            y=halflife_avg_prot, yend=halflife_avg_prot, lty=2, col="black") +
-  annotate("text", x=halflife_t, y=3, hjust=0, size=6,
-           label="paste(\"Half-life \", t[1/2])", parse = TRUE) +
+  annotate("text", x=halflife_t + 1, y=6, hjust=0, size=5,
+           label=expression(paste(t[1/2] == frac(ln(2), k[deg])))) +
   annotate("segment", x=spike_time, xend=halflife_t,
            y=3, yend=3, col="black",
            arrow=arrow(type="closed", ends="both", length=unit(0.03, "npc"))) +
+  annotate("text", x=17, y=p_homeo*1.12, col=total_prot_col, size=6,
+           label=expression(paste("Total abundance=", frac(k[syn],k[deg])))) +
+  empty_theme +
   scale_x_continuous(expand=expansion(mult=0, add=0),
                      limits=range(time),
                      labels=function(x) x-spike_time) +
-  scale_y_continuous(limits=c(0, 55), expand=expansion(mult=0, add=0)) +
+  scale_y_continuous(limits=c(0, 65), expand=expansion(mult=0, add=0)) +
   xlab("Time [A.U.]") +
   ylab("Protein concentration [A.U.]")
 print(homeostasis)
