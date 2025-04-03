@@ -550,14 +550,14 @@ rev_irrev_plot <- ggplot(rev_irrev_response,
   ## geom_vline(data=rev_irrev_response,
   ##           mapping=aes(xintercept=EC_50, col=k_eRL_factor), lty=2) +
   annotate("text", 
-           x=rev_irrev_ec50*c(0.25, 1, 4), y=0.5, vjust=0, size=6, col=rev_irrev_col, 
+           x=rev_irrev_ec50*c(0.25, 1.2, 4), y=0.5, vjust=0, size=6, col=rev_irrev_col, 
            label=c(expression(k[e(RL)]~"\u226B"~k[off]),
                               expression(k[e(RL)] == k[off]),
                               expression(k[e(RL)]~"\u226A"~k[off]))) +
   scale_x_log10(limits=c(1E-4,1E1), expand=c(0,0),
                 breaks=rev_irrev_ec50,
                 labels=c(expression(EC[50] %~~% frac(k[deg], k[on])),
-                         expression(EC[50] == frac(k[off] + k[deg], k[on])),
+                         expression(EC[50] == 2 %.% frac(k[deg], k[on])),
                          expression(EC[50] %~~% frac(k[deg], k[e(RL)]) %.% frac(k[off], k[on])))) + 
   scale_y_continuous(limits=c(0, 1.2), expand=c(0,0), labels=scales::percent) +
   geom_segment(aes(x=1E-4, xend=EC_50,
