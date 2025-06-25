@@ -9,3 +9,4 @@
 *.png
 *.pdf
 .Rproj.user
+core*
