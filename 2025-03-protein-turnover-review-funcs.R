@@ -81,7 +81,7 @@ empty_theme <-  theme(panel.grid = element_blank(),
         axis.ticks = element_blank(),
         axis.text = element_blank(),
         legend.position = "none",
-        axis.title = element_text(size=15),
+        axis.title = element_text(size=18),
         axis.line.x = element_line(arrow = grid::arrow(length = unit(0.3, "cm"))),
         axis.line.y = element_line(arrow = grid::arrow(length = unit(0.3, "cm"))))
 

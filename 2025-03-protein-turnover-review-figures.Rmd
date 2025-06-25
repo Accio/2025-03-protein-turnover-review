@@ -387,7 +387,7 @@ ksyn_plot <- ggplot(ksyn_response,aes(x=ligand_conc, y=response,
   #             y=40, yend=46,
   #             col="black", inherit.aes = FALSE, 
   #             arrow = arrow(length = unit(0.03, "npc"))) +
-  annotate("text", x=1E-4, y=48, vjust=0.5, hjust=0, size=5,
+  annotate("text", x=1E-4, y=48, vjust=0.5, hjust=0, size=7,
            label=expression("" %up% k[syn]~"⟹" %up% E[0] ~"," %up% E[max]~"," %up% R[max] ~"," - EC[50])) +
   scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
   scale_y_continuous(limits=c(0, max(ksyn_response$response)*1.1),
@@ -425,7 +425,7 @@ kdeg_plot <- ggplot(kdeg_response,aes(x=ligand_conc, y=response,
   # geom_segment(x=-3.5, xend=-3,
   #              y=36, yend=32, col="black", inherit.aes = FALSE, 
   #              arrow = arrow(length = unit(0.03, "npc"))) +
-  annotate("text",  x=1E-4,, y=36, vjust=0, hjust=0, size=5,
+  annotate("text",  x=1E-4,, y=36, vjust=0, hjust=0, size=7,
            label=expression("" %up% k[deg]~"⟹" %down% E[0]~","~- E[max]~"," %down% R[max]~"," %up% EC[50])) +
   scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
   scale_y_continuous(limits=c(0, max(kdeg_response$response)*1.15),
@@ -455,7 +455,7 @@ kdeg_ksyn_response <- rbind(base_response, high_kdeg_ksyn_response, low_kdeg_ksy
                                factor(k_syn,
                                       levels=unique(sort(k_syn, decreasing=TRUE))),
                                sep = "/", drop=TRUE))
-kdeg_ksyn_plot <- ggplot(kdeg_ksyn_response,aes(x=ligand_conc, y=response, 
+ksync_kdeg_plot <- ggplot(kdeg_ksyn_response,aes(x=ligand_conc, y=response, 
                                                 col=k_deg_syn, size=k_deg_syn)) +
   geom_line() +
   scale_size_manual(values=linesizes) +
@@ -470,7 +470,7 @@ kdeg_ksyn_plot <- ggplot(kdeg_ksyn_response,aes(x=ligand_conc, y=response,
   #              y=50, yend=57,
   #              col="black", inherit.aes = FALSE, 
   #              arrow = arrow(length = unit(0.03, "npc"))) +
-  annotate("text",  x=1E-4,, y=58, vjust=0, hjust=0, size=5,
+  annotate("text",  x=1E-4,, y=58, vjust=0, hjust=0, size=7,
            label=expression(paste(" ",
                                   frac("" %up% k[syn], "" %up% k[deg])~"⟹" - E[0] ~"," %up% E[max]~"," %up% R[max] ~"," %up% EC[50]))) +
   scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
@@ -478,7 +478,7 @@ kdeg_ksyn_plot <- ggplot(kdeg_ksyn_response,aes(x=ligand_conc, y=response,
                               expand=c(0,0)) +
   empty_theme +
   xlab("Ligand concentration [log scale]") + ylab("Response [A.U.]")
-print(kdeg_ksyn_plot)
+print(ksync_kdeg_plot)
 ```
 
 ```{r k_eRL, fig.height=4, fig.width=4}
@@ -512,7 +512,7 @@ keRL_plot <- ggplot(keRL_response,aes(x=ligand_conc, y=response,
   #              y=57, yend=50,
   #              col="black", inherit.aes = FALSE, 
   #              arrow = arrow(length = unit(0.03, "npc"))) +
-  annotate("text", x=1E-4, y=60, vjust=0, hjust=0, size=5,
+  annotate("text", x=1E-4, y=60, vjust=0, hjust=0, size=7,
            label=expression("" %up% k[e(RL)] ~"⟹" - E[0]~"," %down% E[max]~"," %down% R[max]~"," %down% EC[50])) +
   scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
   scale_y_continuous(limits=c(0, max(keRL_response$response)*1.18),
@@ -553,7 +553,7 @@ rev_irrev_plot <- ggplot(rev_irrev_response,
   ## geom_vline(data=rev_irrev_response,
   ##           mapping=aes(xintercept=EC_50, col=k_eRL_factor), lty=2) +
   annotate("text", 
-           x=rev_irrev_ec50*c(0.25, 1.2, 4), y=0.5, vjust=0, size=5, col=rev_irrev_col, 
+           x=rev_irrev_ec50*c(0.4, 1.2, 3), y=0.5, vjust=0, size=7, col=rev_irrev_col, 
            label=c(expression(k[e(RL)]~"\u226B"~k[off]),
                               expression(k[e(RL)] == k[off]),
                               expression(k[e(RL)]~"\u226A"~k[off]))) +
@@ -570,47 +570,30 @@ rev_irrev_plot <- ggplot(rev_irrev_response,
   geom_segment(x=-3.1, xend=-3.9,
                y=0.35, col="black", inherit.aes = FALSE, 
                arrow = arrow(length = unit(0.03, "npc"))) +
-  annotate("text", x=3.2E-4, y=0.25, vjust=0, hjust=0.5, label="irreversible", size=4.5) +
+  annotate("text", x=3.2E-4, y=0.25, vjust=0, hjust=0.5, label="irreversible", size=6) +
   geom_segment(x=0.15, xend=0.95,
                y=0.35, col="black", inherit.aes = FALSE, 
                arrow = arrow(length = unit(0.03, "npc"))) +
-  annotate("text", x=3.5, y=0.25, vjust=0, hjust=0.5, label="reversible", size=4.5) +
-  annotate("text", x=1E-4, y=1.2, vjust=1, hjust=0, size=5,
+  annotate("text", x=3.5, y=0.25, vjust=0, hjust=0.5, label="reversible", size=6) +
+  annotate("text", x=1E-4, y=1.2, vjust=1, hjust=0, size=7,
            label=expression("" %up% frac(k[e(RL)], k[off]) ~"⟹" %down% EC[50])) +
   geom_line() +
   empty_theme + 
-  theme(axis.text.x = element_text(size=15, angle=30, margin=margin(t=22, b=-10))) +
+  theme(axis.text.x = element_text(size=18, angle=30, margin=margin(t=22, b=-10))) +
   xlab("Ligand concentration [log scale]") + ylab("Normalized response [%]")
 print(rev_irrev_plot)
 ```
 
 The following plot is much inspired by figure 8 and figure 9 of Gabrielsson and Horth.
 
-```{r layout_grid_arrange, eval=FALSE}
-ksyn_keg_kRL_layout <- matrix(c(1,2,
-                                1,2,
-                                3,4,
-                                3,4,
-                                5,5,
-                                5,5,
-                                5,5), ncol=2, byrow=TRUE)
-grid.arrange(ksyn_plot, 
-             kdeg_plot,
-             kdeg_ksyn_plot, 
-             keRL_plot,
-             rev_irrev_plot,
-             layout_matrix=ksyn_keg_kRL_layout)
-```
-
-
-```{r ksyn_keg_kRL_plots, fig.height=11, fig.width=9}
+```{r ksyn_keg_kRL_plots, fig.height=14, fig.width=12}
 add_simp_xlab <- function(obj) return(obj + xlab("Ligand conc. [log]"))
 top_rows <- plot_grid(add_simp_xlab(ksyn_plot), add_simp_xlab(kdeg_plot),
-                      add_simp_xlab(kdeg_ksyn_plot), add_simp_xlab(keRL_plot), label_size=18,
+                      add_simp_xlab(ksync_kdeg_plot), add_simp_xlab(keRL_plot), label_size=21,
                       nrow=2, ncol=2, labels="AUTO")
 full_plot <- plot_grid(top_rows,
                        rev_irrev_plot,
-                       rel_heights = c(4,3), label_size=18,
+                       rel_heights = c(4,3), label_size=21,
                        labels=c("", "E"), ncol=1)
 print(full_plot)
 ```
