@@ -17,7 +17,7 @@
 ]
 
 % define color
-\definecolor{graygreen}{RGB}{202,218,202}
+\definecolor{gray200}{RGB}{200,200,200}
 
 % reaction 0: closed, reversible models
 
@@ -42,7 +42,7 @@
 \node[right=0.15cm of LCI] (plusCI) {$+$};
 \node[species, fill=blue!20, right=0.15cm of plusCI] (RCI) {R};
 \node[species, fill=green!20, right=1cm of RCI] (RLCI) {RL};
-\node[species, fill=graygreen, right=1cm of RLCI] (inactRLCI) {R-L};
+\node[species, fill=gray200, right=1cm of RLCI] (inactRLCI) {R-L};
 
 \draw[myleftarrow]
   ($(RCI.east)+(0.1,0.075)$) -- 
@@ -87,7 +87,7 @@
 \node[right=0.15cm of L2] (plus2) {$+$};
 \node[species, fill=blue!20, right=0.15cm of plus2] (R2) {R};
 \node[species, fill=green!20, right=1cm of R2] (RL2) {RL};
-\node[species, fill=graygreen, right=1cm of RL2] (RL2I) {R-L};
+\node[species, fill=gray200, right=1cm of RL2] (RL2I) {R-L};
 
 \draw[myleftarrow]
   ($(R2.east)+(0.1,0.075)$) -- 
