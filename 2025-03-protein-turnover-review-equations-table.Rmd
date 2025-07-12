@@ -23,7 +23,7 @@ tab$`Closed reversible` <- list("$E_{max} = B_{max}$",
 tab$`Open reversible` <- list("$E_{max} = \\rho \\cdot \\frac{k_{\\mathit{syn}}}{k_{\\mathit{e(RL)}}}$",
   '$EC_{50}= \\frac{k_{\\mathit{deg}}}{k_{\\mathit{e(RL)}}} \\cdot \\frac{k_{\\mathit{off}} + k_{\\mathit{e(RL)}}}{k_{\\mathit{on}}}$')
 tab$`Closed irreversible` <- list("$E_{max}= B_{max}$",
-  '$EC_{50} \\propto \\frac{k_{\\mathit{inact}}}{k_{\\mathit{off}}/k_{\\mathit{on}}}$')
+  '$\\frac{\\mathrm{dR\\text -L}}{\\mathrm{dt}} = \\frac{k_{\\mathit{inact}}}{k_{\\mathit{off}}/k_{\\mathit{on}}}$')
 tab$`Open irreversible` <- list("$E_{max} = \\rho \\cdot \\frac{k_{\\mathit{syn}}}{k_{\\mathit{e(RL)}}}$",
   '$EC_{50} \\propto \\frac{k_{\\mathit{deg}}}{k_{\\mathit{on}}}$')
 kable(tab, "latex", align="c", booktabs=TRUE, escape = FALSE, caption = 'Comparing closed versus open system')
