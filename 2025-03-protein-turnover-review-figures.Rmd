@@ -742,24 +742,9 @@ cov_pk_pd_plot <- ggplot(cov_pk_pd,
 print(cov_pk_pd_plot)
 ```
 
-## Covalent target turnover
-
-```{r target_halflife_anonym, fig.height=5, fig.width=7}
-load("data/2025-06-20-target-halflife-for-covalent.RData")
-target_halflife_anonym_plot_rev <- target_halflife_anonym_plot + ylab("Half-life (hours)")
-print(target_halflife_anonym_plot_rev)
-```
-
-
-```{r full_covalent_plot, fig.height=8, fig.width=7}
-## changing margins with theme(plot.margin=margin(...)): https://r-charts.com/ggplot2/margins/
-cov_pk_pd_plot_withMargins <- cov_pk_pd_plot +
-  theme(plot.margin = margin(l=1.8, r=1.8, unit="cm"))
-full_covalent_plot <- plot_grid(cov_pk_pd_plot_withMargins,
-                       target_halflife_anonym_plot_rev,
-                       rel_heights = c(3,5), label_size=18,
-                       labels=c("A", "B"), ncol=1)
-print(full_covalent_plot)
+```{r}
+save(cov_pk_pd, cov_pk_pd_plot,
+     file="data/2025-08-04-covalent-pk-pd.RData")
 ```
 
 ## Disclaimer
