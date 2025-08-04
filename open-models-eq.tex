@@ -1,0 +1,21 @@
+\documentclass{standalone}
+\usepackage{amsmath}
+
+\begin{document}
+
+% in inkscape, use Cairo import, and scale proportionally to 200%
+\begin{math}
+\begin{aligned}
+	E_{0} &\propto \frac{k_{syn}}{k_{deg}} \\
+	E_{max} &= \rho \cdot \frac{k_{syn}}{k_{RL}} \\
+	\mathrm{Response\ (R)} &= E_{0} + E_{max} \cdot \frac{L}{EC_{50} + L} \\
+		&\propto \frac{k_{syn}}{k_{deg}} + E_{max} \cdot \frac{L}{EC_{50} + L} \\
+		&\propto \frac{k_{syn}}{k_{deg}} + \rho \cdot \frac{k_{syn}}{k_{e(RL)}} \cdot \frac{L}{EC_{50} + L} \\
+	\text{Efficacy } R_{max} &= E_{0} + E_{max} \\
+	\text{Potency}\ EC_{50} \\
+	\textbf{Response (R)} \\
+	\textbf{Ligand concentration (L) [log scale]}
+\end{aligned}
+\end{math}
+
+\end{document}

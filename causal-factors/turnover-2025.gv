@@ -1,0 +1,81 @@
+digraph G {
+
+  rankdir=LR;
+  node [style="filled" fontsize=80 fontname="Times" shape=plaintext fixedsized=true width=8 height=3]
+  edge [penwidth=2 arrowsize=4]
+
+
+  /* fundamental properties */
+  subgraph cluster_protein_intrinsic {
+      node [fillcolor="#8dd3c7" fixedsized=true width=8 height=3]
+      aa [label="Sequence"]
+      folding [label="Folding"]
+      aggregation [label="Aggregation"]
+      interaction_partner [label="Interaction partners"]
+      structure [label="Structure"]
+      PTM [label="Post-translational\n modifications (PTMs)"]
+      compartment [label="Subcellular localization"]
+      /*
+      aa -> folding
+      aa -> structure
+      aa -> compartment
+      aa -> PTM
+      structure -> aggregation
+      structure -> PTM
+      structure -> interaction_partner
+      folding -> structure
+      PTM -> folding
+      folding -> aggregation
+      PTM -> aggregation
+      */
+  }
+
+  /* physiology */
+  subgraph cluster_physiology {
+    rank=TB;
+    node [fillcolor="#ffffb3"]
+
+    invivo [label="Cells in vitro, \ncells in vivo,\n or extracellular?"]
+    sex [label="Sex"]
+    species [label="Species"]
+    organ [label="Cell type, tissue\n or organ"]
+    age [label="Age"]
+    metabolic [label="Metabolic status"]
+    disease [label="Disease"]
+    environment [label="Environment"]
+    drug [label="Drug treatment"]
+   }
+
+   subgraph cluster_other {
+    stochastic [label="Stochastic\nfactors" fillcolor="#80b1d3"]
+    tech [label="Technology" fillcolor="#bebada"]
+   }
+
+
+  turnover [label="Protein turnover" shape="box" fillcolor="gold" fontname="Times bold" rank=sink]
+
+
+  /* molecular level determinants of turnover */
+  aa -> turnover
+  folding -> turnover
+  PTM -> turnover
+  aggregation -> turnover
+  structure -> turnover
+  function -> turnover
+  /* physiological-context determinants of turnover */
+  interaction_partner -> turnover
+  compartment -> turnover
+  invivo -> turnover
+  organ -> turnover
+  species -> turnover
+  age -> turnover
+  sex -> turnover
+  environment -> turnover
+  drug -> turnover
+  disease -> turnover
+  metabolic -> turnover
+  /* stochastic determinants of turnover */
+  stochastic -> turnover
+  tech -> turnover
+
+}

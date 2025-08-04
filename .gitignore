@@ -1,0 +1,13 @@
+*.pyc
+*.swp
+*~
+*.html
+*.log
+*.aux
+.RData
+.Rhistory
+*.png
+*.pdf
+.Rproj.user
+core*
+*.RData

@@ -1,0 +1,31 @@
+---
+title: "Equations"
+author: "Jitao david Zhang"
+date: "2025-04-02"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(knitr)
+library(kableExtra)
+```
+
+```{r tab}
+tab <- data.frame(`Closed reversible`=rep("test", 2),
+                  `Open reversible`=rep("test", 2),
+                  `Closed irreversible`=rep("test", 2),
+                  `Open irreversible`=rep("test", 2),
+  row.names=c("Efficacy", "Potency"),
+  check.names = FALSE)
+tab$`Closed reversible` <- list("$E_{max} = B_{max}$",
+  '$EC_{50} \\propto K_d = \\frac{k_{\\mathit{off}}}{k_{\\mathit{on}}}$')
+tab$`Open reversible` <- list("$E_{max} = \\rho \\cdot \\frac{k_{\\mathit{syn}}}{k_{\\mathit{e(RL)}}}$",
+  '$EC_{50}= \\frac{k_{\\mathit{deg}}}{k_{\\mathit{e(RL)}}} \\cdot \\frac{k_{\\mathit{off}} + k_{\\mathit{e(RL)}}}{k_{\\mathit{on}}}$')
+tab$`Closed irreversible` <- list("$E_{max}= B_{max}$",
+  '$\\frac{\\mathrm{dR\\text -L}}{\\mathrm{dt}} = \\frac{k_{\\mathit{inact}}}{k_{\\mathit{off}}/k_{\\mathit{on}}}$')
+tab$`Open irreversible` <- list("$E_{max} = \\rho \\cdot \\frac{k_{\\mathit{syn}}}{k_{\\mathit{e(RL)}}}$",
+  '$EC_{50} \\propto \\frac{k_{\\mathit{deg}}}{k_{\\mathit{on}}}$')
+kable(tab, "latex", align="c", booktabs=TRUE, escape = FALSE, caption = 'Comparing closed versus open system')
+```
+

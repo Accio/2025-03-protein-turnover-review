@@ -1,0 +1,773 @@
+---
+title: "Leveraging Protein Turnover for Drug Discovery: figures"
+author: "Jitao david Zhang"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+output:
+  html_document:
+    df_print: paged
+    theme: spacelab
+    mathjax: default
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+params:
+  echo: yes
+  relative: FALSE
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.path="figures/protein-turnover-",
+                      dev = c("png", "pdf"),
+                      dpi = 300,
+                      fig.height=6, fig.width=6)
+library(ribiosUtils)
+library(ribiosIO)
+library(ribiosPlot)
+library(openxlsx)
+library(tidyverse)
+library(ggplot2)
+library(emmeans)
+library(knitr)
+library(rmarkdown)
+library(kableExtra)
+library(zoo)
+library(Vennerable)
+library(ggalluvial)
+library(gridExtra)
+library(cowplot)
+source("2025-03-protein-turnover-review-funcs.R")
+theme_set(theme_light(base_size=14))
+```
+
+
+## Definition of protein turnover
+
+Assuming that the protein follows zero-order synthesis with constant production rate $k_{syn}$, and first-order degradation with rate $k_{deg}$. The ordinary differential equation describing protein concentration changes with regard to $t$ is
+
+$$ \frac{dP}{dt} = k_{syn} - k_{deg}P(t) $$.
+
+The closed form solution, assuming that $ P(0) = 0$, is
+
+$$ P(t) = \frac{k_{syn}}{k_{deg}}(1-e^{-k_{deg}t}) $$
+Here the assumption is that protein is synthesized and degraded with a constant synthesis rate and a constant degradation rate following exponential decay. The constant exponential-decay rate suggests that proteins, old or new, have the same probability at any time to be degraded. In particular, even newly synthesized proteins are degraded, so that the accumulation of newly synthesized protein is not linear (as a simple zero-order synthesis rate would suggest), but rather sigmoidal (due to the decay term).
+
+McShane et al. (2016) showed that this model is probably valid for about 90% of the proteins, at least in mouse fibroblasts and human retinal pigmented epithelial cell lines: for the rest 10% proteins show non-exponential decay, i.e. they are less stable in the first hours in their life, and becomes more stable later.
+
+Assuming the zero-order synthesis and first-order degradation model, and assuming that the protein abundance does not change during the period during which we investigate its turnover, then during this time interval the total synthesis equals the total degradation, and the half-life, which is defined by the time when half of the protein species consists of old protein while the other half consists of newly synthesized molecules after the labeling, can be solved analytically:
+
+$$ t_{1/2} = \frac{ln(2)}{k_{deg}} $$
+
+The faster the degradation rate $k_{deg}$, the shorter the turnover.
+
+At the same time, according to the model, the homeostasis concentration $P$ is given as 
+
+$$ P = \frac{k_{syn}}{k_{deg}} $$.
+
+Therefore,
+
+$$ k_{syn} = \frac{ln(2) P}{t_{1/2}} $$.
+
+This means that $k_{deg}$ and $k_{syn}$ can be deduced from the synthesis/degradation curves of the labeling experiment if the model assumptions hold.
+
+```{r homeostasis_prep}
+# Define parameters
+k_syn <- 8     # Zero-order synthesis rate
+k_deg <- 0.16    # First-order degradation rate
+p_homeo <- homeostasis_abundance(k_syn, k_deg) # asymptotic steady-state (homeostasis) level
+time <- seq(0, 30, length.out = 100)
+spike_time <- 6
+
+## newly 
+new_prot_func <- function(t) {
+  eff_time <- t - spike_time
+  res <- k_syn/k_deg * (1 - exp(-k_deg * eff_time))
+  res[eff_time < 0] <- NA
+  return(res)
+}
+old_prot_func <- function(t) {
+  eff_time <- t - spike_time
+  res <- p_homeo * exp(-k_deg * eff_time)
+  res[eff_time < 0] <- p_homeo
+  return(res)
+}
+new_prot <- new_prot_func(time)
+old_prot <- old_prot_func(time)
+halflife_t_ind <- which.min(abs(new_prot - old_prot))
+halflife_t <- time[halflife_t_ind]
+halflife_new_prot <- new_prot_func(halflife_t)
+halflife_old_prot <- old_prot_func(halflife_t)
+halflife_avg_prot <- (halflife_new_prot + halflife_old_prot)/2 ## should be exactly half of k_syn/k_deg
+
+prot_df <- data.frame(time=time,
+                      old=old_prot,
+                      new=new_prot)
+new_prot_col <- "#1a9641"
+old_prot_col <- "#dc7e2b"
+total_prot_col <- "#2c7bb6"
+```
+
+```{r homeostasis_plot, fig.height=4, fig.width=6}
+homeostasis <- ggplot(prot_df, aes(x=time, y=new)) +
+  geom_hline(yintercept=0, col="darkgray") +
+  geom_line(lwd=1.5, col=new_prot_col) +
+  geom_line(aes(x=time, y=old), col=old_prot_col, lwd=1.5) +
+  geom_hline(yintercept = p_homeo, col=total_prot_col, lwd=1.5) +
+  geom_vline(xintercept = spike_time, col="darkgray") +
+##  annotate("text", x=spike_time*0.95, y=p_homeo*0.9, label="Labeling",
+##           vjust=1, hjust=1, size=6, col="darkgray") +
+  annotate("text", x=18, y=new_prot_func(18), col=new_prot_col,
+           label="New protein", size=6, hjust=0, vjust=1) +
+##  annotate("text", x=20, y=new_prot_func(20), col=new_prot_col,
+##           label=expression(paste("Synthesis rate ", k[syn], " and")), size=4, hjust=0, vjust=2.2) +
+##  annotate("text", x=20, y=new_prot_func(20), col=new_prot_col,
+##            label=expression(paste("degradation rate ", k[deg])), size=4, hjust=0, vjust=3.3) +
+  annotate("text", x=18, y=old_prot_func(18), col=old_prot_col,
+           label="Old protein", size=6, hjust=0, vjust=0) +
+##  annotate("text", x=20, y=old_prot_func(20), col=old_prot_col,
+##           label=expression(paste("Degradation rate ", k[deg])), size=4, hjust=0, vjust=0) +
+  annotate("segment", x=halflife_t, xend=halflife_t,
+           y=0, yend=halflife_avg_prot, lty=2, col="black") +
+  annotate("segment", x=spike_time, xend=halflife_t,
+           y=halflife_avg_prot, yend=halflife_avg_prot, lty=2, col="black") +
+  annotate("text", x=halflife_t + 1, y=6, hjust=0, size=5,
+           label=expression(paste(t[1/2] == frac(ln(2), k[deg])))) +
+  annotate("segment", x=spike_time, xend=halflife_t,
+           y=3, yend=3, col="black",
+           arrow=arrow(type="closed", ends="both", length=unit(0.03, "npc"))) +
+  annotate("text", x=14, y=p_homeo*1.15, col=total_prot_col, size=6,
+           label=expression(paste(P[total], "=", P[new+old] == frac(k[syn],k[deg])))) +
+  empty_theme_withXaxis +
+  scale_x_continuous(expand=expansion(mult=0, add=0),
+                     limits=range(time),
+                     breaks=spike_time,
+                     labels="t=0 (labeling)") +
+  scale_y_continuous(limits=c(0, 65), expand=expansion(mult=0, add=0)) +
+  xlab("Time") +
+  ylab("Protein abundance (P)")
+print(homeostasis)
+```
+
+
+A similar concept describing protein turnover is the mean lifetime $\tau$, which is defined by the average length of time a protein species persists. Mathematically, it can be shown that it is the time required for a protein to be reduced to $1/e$ of its initial quantity. The relationship between mean lifetime, degradation rate, and half-life can be expressed as 
+
+$$ \tau = \frac{1}{k_{deg}} = \frac{t_{1/2}}{ln(2)} $$.
+
+Using mean life time simplifies the expression of the relationship between the synthesis rate and the protein abundance
+
+$$ P = k_{syn} \tau $$,
+
+which is also known as [Little's Law](https://en.wikipedia.org/wiki/Little%27s_law) in mathematics.
+
+In the review, when not otherwise indicated, we use protein half-life to express protein's turnover.
+
+## Open pharmacological models without ligand recycling
+
+Dynamics of the free concentrations of the ligand $L$, the free binding sites of target receptor $R$), and the ligand-target complex $LR$ can be described by the following ODE system:
+
+$$
+\frac{dL}{dt} = \frac{In}{V} - \frac{CL_{(L)}}{V}L - k_{on} \cdot L \times R + k_{off} \cdot RL \\
+\frac{dR}{dt} = k_{syn} - k_{deg} \cdot R - k_{on} \cdot L \cdot R + k_{off} \cdot RL \\
+\frac{dRL}{dt} = k_{on} \cdot L \cdot R - k_{off} \cdot RL - k_{e(RL)} \cdot RL
+$$
+At the steady state (abbreviated as 'ss'), the solutions of the system are
+
+$$
+\begin{aligned}
+K_d &= \frac{k_{\mathit{off}}}{k_{\mathit{on}}} \\
+R_{0} &= \frac{k_{syn}}{k_{deg}} \\
+R_{ss} &= R_0 \cdot (1-\frac{L_{ss}}{L_{ss}+ EC_{50}}) \\
+RL_{ss} &= R_0 \cdot \frac{k_{deg}}{k_{e(RL)}} \cdot \frac{L_{ss}}{L_{ss}+ EC_{50}}  \\
+E_{0} &\propto \frac{k_\mathit{syn}}{k_\mathit{deg}}~\text{or constitutive activity} \\
+E_{\mathit{max}} &= \rho \cdot \frac{k_\mathit{syn}}{k_\mathit{e(RL)}} \\
+EC_{50,~\text{reversible}} &=  \frac{k_{deg}}{k_{e(RL)}}  \frac{k_{\mathit{off}}+k_{e(RL)}}{k_{\mathit{on}}} \\
+EC_{50,~\text{irreversible}} &\propto  \frac{k_{deg}}{k_{\textit{on}}} \\
+\mathit{Response} &= E_{0} + \frac{E_{\mathit{max}} \cdot L}{EC_{50} + L}
+\end{aligned}
+$$
+Note that in cellular models where proteins are constantly synthesized and degraded, the potency parameter $EC_{50}$ differs both from the dissociation constant ($K_d=\frac{k_{off}}{k_{on}}$) and from the Michaelis-Menton constant (frac{k_{off}+k_{e(RL)}}{k_{on}}): it contains both the target turnover ($k_{deg}$), and target-complex kinetics ($k_{e(RL)}).
+
+## Simulation examples about $k_{\mathit{syn}}$, $k_{\mathit{deg}}$ and  $k_{\mathit{e(RL)}} affect in vivo curves
+
+For k_on and k_off values, we take median values of a set of marketed drugs as collected by [Dahl and Akerud (Drug Discovery Today, 2013)](https://www.sciencedirect.com/science/article/pii/S1359644613000688).
+
+```{r}
+dahl_2013 <- read_tsv("data/Dahl-2013.txt")
+parse_dahl_number <- function(str) {
+  as.numeric(gsub("−", "-", str))
+}
+dahl_2013 <- dahl_2013 %>%
+  mutate("kon (M−1 s−1)b" = parse_dahl_number(`kon (M−1 s−1)b`),
+         "koff (s−1)" = parse_dahl_number(`koff (s−1)`))
+k_on <- dahl_2013 %>% pull("kon (M−1 s−1)b")
+print(k_on)
+median_k_on <- median(k_on, na.rm=TRUE) ## 7.6E5
+k_off <- dahl_2013 %>% pull("koff (s−1)")
+print(k_off)
+median_k_off <- median(k_off, na.rm=TRUE) ## 2.8
+```
+
+```{r SM_setting}
+base_sm_k_syn <- 1
+base_sm_k_deg <- 1E-6
+base_sm_k_eRL <- 1E-6
+base_sm_k_on <- 7.6E5
+base_sm_k_off <- 2.8
+```
+
+```{r AB_setting}
+## Simulation, Table 1, Gabrielsson & Peletier
+base_ab_k_syn <- 0.11  ##  (mg/L)/h
+base_ab_k_deg <- 0.0089 ## h-1
+base_ab_k_eRL <- 0.003 ## h-1
+base_ab_k_on <- 0.091 ## (mg/L)h
+base_ab_k_off <- 0.001
+base_ab_L_start <- 10^-4
+base_ab_L_end <- 10^2
+base_ab_L_vals <- 10^seq(log10(base_ab_L_start), log10(base_ab_L_end), length.out=100)
+var_ab_labels <- c("High", "Mid", "Low")
+```
+
+```{r base_plot}
+base_response <-  response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+base_response_prop <- data.frame(E_0=unique(base_response$E_0),
+                                 E_max=unique(base_response$E_max),
+                                 E_0_add_max=unique(base_response$E_max + base_response$E_0),
+                                 x_min=min(base_response$ligand_conc),
+                                 y_min=min(base_response$response),
+                                 EC_50=unique(base_response$EC_50)) %>%
+  mutate(E_at_EC_50=E_0_add_max/2)
+base_response_plot_xlim <- c(1E-4, 1E7)
+base_response_plot_ylim <- c(-6, base_response_prop$E_0_add_max * 1.08)
+base_response_plot_textblue <- "#004495"
+base_response_plot_textred <- "#B2182B"
+base_response_plot_textmagenta <- "#54278F"
+base_response_plot_textgrey <- "#252525"
+base_response_rootplot <- ggplot(base_response,
+                             aes(x=ligand_conc, y=response)) +
+  scale_x_log10(limits=base_response_plot_xlim, 
+                breaks=waiver(), expand=c(0,0),
+                labels=NULL) +
+  scale_y_continuous(limits=base_response_plot_ylim,
+                     expand=c(0, 0)) +
+  geom_line(lwd=1.1) +
+  geom_hline(data=base_response_prop,
+             aes(yintercept=E_0), lty=2) +
+  geom_hline(data=base_response_prop,
+             aes(yintercept=E_0_add_max), lty=2) +
+  geom_segment(data=base_response_prop,
+               aes(x=x_min, xend=EC_50,
+                   y=E_at_EC_50,
+                   yend=E_at_EC_50), lty=2, inherit.aes = FALSE) +
+  geom_segment(data=base_response_prop,
+               aes(x=EC_50,
+                   y=base_response_plot_ylim[1], 
+                   yend=E_at_EC_50), lty=2, inherit.aes=FALSE) +
+    ylab("Response") + empty_theme
+base_response_baseplot <-  base_response_rootplot +
+  annotate("text",
+           x=1E3,
+           y=base_response_prop$E_0_add_max,
+           vjust=1,
+           label=expression(paste(E[max], "=",
+                                  rho %.% frac(k[syn], k[e(RL)]))),
+           size=6, col=base_response_plot_textblue) +
+    annotate("text",
+           x=base_response_plot_xlim[1],
+           y=base_response_prop$E_0,
+           vjust=1, hjust=-0.1,
+           label=expression(paste(E[0] %prop% frac(k[syn], k[deg]),
+                                  " or constitutive activity")),
+           size=6, col=base_response_plot_textblue)
+base_response_reversible_plot <- base_response_baseplot +  
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(EC[50] == frac(k[deg], k[e(RL)]) %.% frac(k[off] + k[e(RL)], k[on])),
+           vjust=0.5, hjust=0,
+           size=6, col=base_response_plot_textred)
+base_response_reversible_plot <- base_response_baseplot +  
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(EC[list(50, rev.)] == frac(k[deg], k[e(RL)]) %.% frac(k[off] + k[e(RL)], k[on])),
+           vjust=0.5, hjust=-0.02,
+           size=6, col=base_response_plot_textred) +
+  xlab("Reversible ligand concentration [log scale]")
+base_response_irreversible_plot <- base_response_baseplot +  
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(EC[list(50, irrev.)] %prop% frac(k[deg], k[on])),
+           vjust=0.5, hjust=-0.02,
+           size=6, col=base_response_plot_textmagenta) +
+    xlab("Irreversible ligand concentration [log scale]")
+```
+
+```{r closed-reversible, fig.height=4, fig.width=3.2}
+closed_reversible_plot <- base_response_rootplot +
+  scale_x_log10(limits=c(1E-4, 1E4), 
+                breaks=waiver(), expand=c(0,0),
+                labels=NULL) +
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(K[d] == frac(k[off], k[on])),
+           vjust=0.5, hjust=-0.05,
+           size=6, col=base_response_plot_textgrey) +
+    xlab("Ligand concentration [log scale]")
+print(closed_reversible_plot)
+```
+
+```{r closed-irreversible, fig.height=4, fig.width=3.2}
+closed_irreversible_plot <- base_response_rootplot +
+  scale_x_log10(limits=c(1E-4, 1E4), 
+                breaks=waiver(), expand=c(0,0),
+                labels=NULL) +
+  annotate("text",
+           x=base_response_prop$EC_50,
+           y=base_response_prop$E_at_EC_50,
+           label=expression(Potency %prop% frac(k[inact], frac(k[off], k[on]))),
+           vjust=1, hjust=0.05,
+           size=6, col=base_response_plot_textgrey) +
+    xlab("Ligand concentration [log scale]")
+print(closed_irreversible_plot)
+```
+
+```{r open-reversible, fig.height=4, fig.width=5}
+print(base_response_reversible_plot)
+```
+
+```{r open-irreversible, fig.height=4, fig.width=5}
+print(base_response_irreversible_plot)
+```
+
+```{r k_syn_plot, fig.height=5, fig.width=5}
+high_ksyn_response <- response_func(k_syn=base_ab_k_syn*1.5, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+low_ksyn_response <- response_func(k_syn=base_ab_k_syn*0.5, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+ksyn_response <- rbind(base_response, high_ksyn_response, low_ksyn_response) %>%
+  arrange(k_syn, ligand_conc) %>%
+  mutate(k_syn_factor=factor(k_syn,
+                             levels=unique(sort(k_syn, decreasing=TRUE))))
+syn_col <- c("#B2182B", "black", "#2066AC")
+linesizes <- c(2.5, 1.75, 1)
+ksyn_plot <- ggplot(ksyn_response,aes(x=ligand_conc, y=response, 
+                                      col=k_syn_factor, size=k_syn_factor)) +
+  scale_color_manual(values=syn_col, name=expression(k[syn]),
+                     labels=var_ab_labels) +
+  scale_size_manual(values=linesizes) +
+  geom_line() +
+  geom_segment(aes(x=1E-4, xend=EC_50,
+                   y=E_0 + 0.5*E_max, col=k_syn_factor), lty=2, size=1) +
+  geom_segment(aes(y=0, yend=E_0 + 0.5*E_max,
+                   x=EC_50, col=k_syn_factor), lty=2, size=1) +
+  # geom_segment(x=-3.5,
+  #             y=40, yend=46,
+  #             col="black", inherit.aes = FALSE, 
+  #             arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text", x=1E-4, y=48, vjust=0.5, hjust=0, size=7,
+           label=expression("" %up% k[syn]~"⟹" %up% E[0] ~"," %up% E[max]~"," %up% R[max] ~"," - EC[50])) +
+  scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
+  scale_y_continuous(limits=c(0, max(ksyn_response$response)*1.1),
+                     expand=c(0,0)) +
+  empty_theme +
+  xlab("Ligand concentration [log scale]") + ylab("Response")
+print(ksyn_plot)
+```
+
+```{r k_deg, fig.height=4, fig.width=4}
+high_kdeg_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg*8,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+low_kdeg_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg*0.2,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+kdeg_response <- rbind(base_response, high_kdeg_response, low_kdeg_response) %>%
+  arrange(k_deg, ligand_conc) %>%
+  mutate(k_deg_factor=factor(k_deg,
+                             levels=unique(sort(k_deg, decreasing=TRUE))))
+deg_col <- c("#B2182B", "black", "#2066AC")
+kdeg_plot <- ggplot(kdeg_response,aes(x=ligand_conc, y=response, 
+                                      col=k_deg_factor, size=k_deg_factor)) +
+  scale_color_manual(values=deg_col, name=expression(k[deg]),
+                     labels=var_ab_labels) +
+  scale_size_manual(values=linesizes) +
+  geom_segment(aes(x=1E-4, xend=EC_50,
+               y=E_0 + 0.5*E_max, col=k_deg_factor), lty=2, size=1) +
+  geom_segment(aes(y=0, yend=0.5*E_max+E_0,
+                   x=EC_50, col=k_deg_factor), lty=2, size=1) +
+  # geom_segment(x=-3.5, xend=-3,
+  #              y=36, yend=32, col="black", inherit.aes = FALSE, 
+  #              arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text",  x=1E-4,, y=36, vjust=0, hjust=0, size=7,
+           label=expression("" %up% k[deg]~"⟹" %down% E[0]~","~- E[max]~"," %down% R[max]~"," %up% EC[50])) +
+  scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
+  scale_y_continuous(limits=c(0, max(kdeg_response$response)*1.15),
+                              expand=c(0,0)) +
+  geom_line() +
+  empty_theme +
+  xlab("Ligand concentration [log scale]") + ylab("Response")
+print(kdeg_plot)
+```
+
+```{r, kdeg_ksyn, fig.height=4, fig.width=4}
+high_kdeg_ksyn_response <- response_func(k_syn=base_ab_k_syn*2, k_deg=base_ab_k_deg*2,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+low_kdeg_ksyn_response <- response_func(k_syn=base_ab_k_syn*0.5, k_deg=base_ab_k_deg*.5,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+deg_syn_col <- c("#B2182B", "black", "#2066AC")
+kdeg_ksyn_response <- rbind(base_response, high_kdeg_ksyn_response, low_kdeg_ksyn_response) %>%
+  arrange(k_deg, k_syn, ligand_conc) %>%
+  mutate(k_deg_syn=interaction(factor(k_deg,
+                                      levels=unique(sort(k_deg, decreasing=TRUE))),
+                               factor(k_syn,
+                                      levels=unique(sort(k_syn, decreasing=TRUE))),
+                               sep = "/", drop=TRUE))
+ksync_kdeg_plot <- ggplot(kdeg_ksyn_response,aes(x=ligand_conc, y=response, 
+                                                col=k_deg_syn, size=k_deg_syn)) +
+  geom_line() +
+  scale_size_manual(values=linesizes) +
+  scale_color_manual(values=deg_syn_col, 
+                     name=expression(paste(k[syn], " & ", k[deg])),
+                     labels=var_ab_labels, position="bottom")+
+  geom_segment(aes(x=1E-4, xend=EC_50,
+               y=E_0 + 0.5*E_max, col=k_deg_syn), lty=2, size=1) +
+  geom_segment(aes(y=0, yend=0.5*E_max+E_0,
+                   x=EC_50, col=k_deg_syn), lty=2, size=1) +
+  # geom_segment(x=-3.5, xend=-3.2,
+  #              y=50, yend=57,
+  #              col="black", inherit.aes = FALSE, 
+  #              arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text",  x=1E-4,, y=58, vjust=0, hjust=0, size=7,
+           label=expression(paste(" ",
+                                  frac("" %up% k[syn], "" %up% k[deg])~"⟹" - E[0] ~"," %up% E[max]~"," %up% R[max] ~"," %up% EC[50]))) +
+  scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
+  scale_y_continuous(limits=c(0, max(kdeg_ksyn_response$response)*1.3),
+                              expand=c(0,0)) +
+  empty_theme +
+  xlab("Ligand concentration [log scale]") + ylab("Response")
+print(ksync_kdeg_plot)
+```
+
+```{r k_eRL, fig.height=4, fig.width=4}
+high_keRL_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL*2, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+low_keRL_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL*0.5, k_on=base_ab_k_on,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+keRL_response <- rbind(base_response, high_keRL_response, low_keRL_response) %>%
+  arrange(k_eRL, ligand_conc)  %>%
+  mutate(k_eRL_factor=factor(k_eRL,
+                             levels=unique(sort(k_eRL, decreasing=TRUE))))
+eRL_col <- c("#B2182B", "black", "#2066AC")
+keRL_plot <- ggplot(keRL_response,aes(x=ligand_conc, y=response, 
+                                      col=k_eRL_factor, size=k_eRL_factor)) +
+  geom_line() +
+  scale_color_manual(values=eRL_col, 
+                     name=expression(k[e(RL)]),
+                     labels=var_ab_labels) +
+  scale_size_manual(values=linesizes) +
+  geom_segment(aes(x=1E-4, xend=EC_50,
+               y=E_0 + 0.5*E_max, col=k_eRL_factor), lty=2, size=1) +
+  geom_segment(aes(y=0, yend=0.5*E_max+E_0,
+                   x=EC_50, col=k_eRL_factor), lty=2, size=1) +
+  # geom_segment(x=-3.2, xend=-3.5,
+  #              y=57, yend=50,
+  #              col="black", inherit.aes = FALSE, 
+  #              arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text", x=1E-4, y=60, vjust=0, hjust=0, size=7,
+           label=expression("" %up% k[e(RL)] ~"⟹" - E[0]~"," %down% E[max]~"," %down% R[max]~"," %down% EC[50])) +
+  scale_x_log10(limits=c(1E-4,1E2), expand=c(0,0)) +
+  scale_y_continuous(limits=c(0, max(keRL_response$response)*1.18),
+                              expand=c(0,0)) +
+  empty_theme +
+  xlab("Ligand concentration [log scale]") + ylab("Response")
+print(keRL_plot)
+```
+
+```{r rev_irrev_plot, fig.height=5, fig.width=6}
+base_ab_k_off_k_eRL_ratio <- base_ab_k_off/base_ab_k_eRL ## 1/3
+halfway_rev_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL, k_on=base_ab_k_on*5,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+irreversible_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL*100, k_on=base_ab_k_on*20,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+reversible_response <- response_func(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg,
+                                k_eRL=base_ab_k_eRL/100, k_on=base_ab_k_on*20,
+                                k_off=base_ab_k_off,
+                                L_start=base_ab_L_start,
+                                L_end=base_ab_L_end)
+rev_irrev_response <- rbind(halfway_rev_response, irreversible_response, reversible_response) %>%
+  arrange(k_eRL, ligand_conc)  %>%
+  mutate(k_eRL_factor=factor(k_eRL,
+                             levels=unique(sort(k_eRL, decreasing=TRUE))))
+rev_irrev_col <- c("#B2182B", "black", "#2066AC")
+rev_irrev_ec50 <- sort(unique(rev_irrev_response$EC_50))
+rev_irrev_plot <- ggplot(rev_irrev_response,
+                         aes(x=ligand_conc, y=(response-E_0)/(E_max), 
+                             col=k_eRL_factor, size=k_eRL_factor)) +
+  scale_color_manual(values=rev_irrev_col) +
+  scale_size_manual(values=linesizes) +
+  ## geom_vline(data=rev_irrev_response,
+  ##           mapping=aes(xintercept=EC_50, col=k_eRL_factor), lty=2) +
+  annotate("text", 
+           x=rev_irrev_ec50*c(0.4, 1.2, 3), y=0.5, vjust=0, size=7, col=rev_irrev_col, 
+           label=c(expression(k[e(RL)]~"\u226B"~k[off]),
+                              expression(k[e(RL)] == k[off]),
+                              expression(k[e(RL)]~"\u226A"~k[off]))) +
+  scale_x_log10(limits=c(1E-4,1E1), expand=c(0,0),
+                breaks=rev_irrev_ec50,
+                labels=c(expression(EC[50] %~~% frac(k[deg], k[on])),
+                         expression(EC[50] == 2 %.% frac(k[deg], k[on])),
+                         expression(EC[50] %~~% frac(k[deg], k[e(RL)]) %.% frac(k[off], k[on])))) + 
+  scale_y_continuous(limits=c(0, 1.2), expand=c(0,0), labels=scales::percent) +
+  geom_segment(aes(x=1E-4, xend=EC_50,
+               y=0.5, col=k_eRL_factor), lty=2, size=1) +
+  geom_segment(aes(y=0, yend=0.5,
+                   x=EC_50, col=k_eRL_factor), lty=2, size=1) +
+  geom_segment(x=-3.1, xend=-3.9,
+               y=0.35, col="black", inherit.aes = FALSE, 
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text", x=3.2E-4, y=0.25, vjust=0, hjust=0.5, label="irreversible", size=6) +
+  geom_segment(x=0.15, xend=0.95,
+               y=0.35, col="black", inherit.aes = FALSE, 
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  annotate("text", x=3.5, y=0.25, vjust=0, hjust=0.5, label="reversible", size=6) +
+  annotate("text", x=1E-4, y=1.2, vjust=1, hjust=0, size=7,
+           label=expression("" %up% frac(k[e(RL)], k[off]) ~"⟹" %down% EC[50])) +
+  geom_line() +
+  empty_theme + 
+  theme(axis.text.x = element_text(size=18, angle=30, margin=margin(t=22, b=-10))) +
+  xlab("Ligand concentration [log scale]") + ylab("Normalized response [%]")
+print(rev_irrev_plot)
+```
+
+The following plot is much inspired by figure 8 and figure 9 of Gabrielsson and Horth.
+
+```{r ksyn_keg_kRL_plots, fig.height=14, fig.width=12}
+add_simp_xlab <- function(obj) return(obj + xlab("Ligand conc. [log]"))
+top_rows <- plot_grid(add_simp_xlab(ksyn_plot), add_simp_xlab(kdeg_plot),
+                      add_simp_xlab(ksync_kdeg_plot), add_simp_xlab(keRL_plot), label_size=21,
+                      nrow=2, ncol=2, labels="AUTO")
+full_plot <- plot_grid(top_rows,
+                       rev_irrev_plot,
+                       rel_heights = c(4,3), label_size=21,
+                       labels=c("", "E"), ncol=1)
+print(full_plot)
+```
+
+## Total receptor abundance
+
+Inspired by Figure 4 of Gabrielsson and Peletier (2017)
+
+```{r}
+k_eRL_k_deg_ratios <- c(0.7, 1, 1.4)
+ratio_new_levels <- c("k_eRL < k_deg",
+                      "k_eRL = k_deg",
+                      "k_eRL > k_deg")
+names(ratio_new_levels) <- k_eRL_k_deg_ratios
+base_ab_rl_ss <- lapply(k_eRL_k_deg_ratios, 
+                        function(ratio) {
+                          curr_k_eRL <- base_ab_k_deg * ratio
+                          rl_ss <- rl_ss(base_ab_L_vals,
+                                         k_on=base_ab_k_on,
+                                         k_off=base_ab_k_off,
+                                         k_syn=base_ab_k_syn,
+                                         k_deg=base_ab_k_deg,
+                                         k_eRL=curr_k_eRL)
+                          r_0 <- r_0(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg)
+                          r_star <- r_star(k_syn=base_ab_k_syn,
+                                           k_deg=base_ab_k_deg,
+                                           k_eRL=curr_k_eRL)
+                          l_50 <- l_50(k_on=base_ab_k_on,
+                                       k_off=base_ab_k_off,
+                                       k_eRL=curr_k_eRL,
+                                       k_deg=base_ab_k_deg)
+                          res <- data.frame(l_ss=base_ab_L_vals,
+                                            k_eRL_k_deg_ratio=ratio,
+                                            r_0=r_0,
+                                            r_star=r_star,
+                                            l_50=l_50,
+                                            type="RL_ss",
+                                            value=rl_ss)
+                          return(res)
+                        })
+base_ab_r_ss <- lapply(k_eRL_k_deg_ratios, 
+                       function(ratio) {
+                         curr_k_eRL <- base_ab_k_deg * ratio
+                         r_ss  <- r_ss(base_ab_L_vals,
+                                       k_on=base_ab_k_on,
+                                       k_off=base_ab_k_off,
+                                       k_syn=base_ab_k_syn,
+                                       k_deg=base_ab_k_deg,
+                                       k_eRL=curr_k_eRL)
+                         r_0 <- r_0(k_syn=base_ab_k_syn, k_deg=base_ab_k_deg)
+                         r_star <- r_star(k_syn=base_ab_k_syn,
+                                          k_deg=base_ab_k_deg,
+                                          k_eRL=curr_k_eRL)
+                         l_50 <- l_50(k_on=base_ab_k_on,
+                                      k_off=base_ab_k_off,
+                                      k_eRL=curr_k_eRL,
+                                      k_deg=base_ab_k_deg)
+                         res <- data.frame(l_ss=base_ab_L_vals,
+                                           k_eRL_k_deg_ratio=ratio,
+                                           r_0=r_0,
+                                           r_star=r_star,
+                                           l_50=l_50,
+                                           type="R_ss",
+                                           value=r_ss)
+                         return(res)
+                       })
+base_ab_ss <- rbind(do.call(rbind, base_ab_rl_ss),
+                    do.call(rbind, base_ab_r_ss)) %>%
+  mutate(type=factor(type, levels=c("RL_ss", "R_ss"))) %>%
+  mutate(k_eRL_k_deg_factor = relevels(factor(k_eRL_k_deg_ratio),
+                                       ratio_new_levels)) %>%
+  arrange(k_eRL_k_deg_ratio, l_ss)
+ss_col <- c("RL_ss"="#CC0010", "R_ss"="black")
+```
+
+```{r base_ab_ss_plot, fig.height=3, fig.width=8}
+base_ab_ss_plot <- ggplot(base_ab_ss,
+                          aes(x=l_ss, y=value, col=type)) +
+    scale_color_manual(values=ss_col, 
+                       name="",
+                     labels=c(expression({RL}[ss]), 
+                              expression(R[ss]))) +
+  facet_wrap(~k_eRL_k_deg_factor) +
+  geom_hline(aes(yintercept=r_0), lty=2) +
+  geom_hline(aes(yintercept=r_star), lty=2, col="#CC0010") +
+  geom_vline(aes(xintercept=l_50), col="darkgray") +
+  annotate("text", x=0.1, y=15, label=expression(EC[50]), hjust=1)+
+  scale_x_log10() +
+  geom_line() +
+  theme(legend.position = "right", 
+        legend.text = element_text(size=14),
+        axis.text = element_text(size=13), 
+        axis.title = element_text(size=15)) +
+  xlab(expression(paste("Steady-state ligand concentration ",
+                        L[ss], " in log scale"))) + ylab("Concentration")
+print(base_ab_ss_plot)
+```
+
+## A two-compartment PK/PD model of enzymic target degradation by an irreversible covalent inhbitor
+
+The model was created by Andres Olivares. It assumes oral dosing and two compartments (central and peripheral). The parameters that we used are:
+
+Inspired by daroczig's comments, especially the clue that pander translates to pandoc's pipe syntax, I took a closer look at the pander documentation and found reference to cat. After some experimentation, I found the winner:
+
+```{r table2, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+tabl <- "
+| Parameter (unit) | Value |
+|------------------|:-----:|
+|Dose (mg/kg) |5|
+|Molecular Weight (g/Mol) |800|
+|Target abundance (mg) |100|
+|Free fraction |50%|
+|Target half-life|1, 10, 100, 1000|
+|Absorption rate constant (ka, 1/hr) |1|
+|Elimination clearance (CL, ml/min/kg) |10|
+|Volume of central compartment (V1, L1/kg) |2|
+|Volume of peripheral compartment (V2, L/kg) |1|
+|Intercompartmental clearance (Q, mL/min/kg) |5|
+|Inactivation rate constant (k_inact, 1/min) |0.05|
+|KI (nM) | 	10|
+|Dosing interval (hours) |24|
+|Number of doses |10|
+"
+cat(tabl)
+```
+
+```{r pk_pd_covalent_prep}
+cov_pk_pd <- read.xlsx("data/2025-03-Target-degradation-covalent-binding-oral-PK-PD-Andres.xlsx") %>%
+  dplyr::rename(turnover=`Protein.half-life`) %>%
+  dplyr::mutate(turnover=factor(turnover, levels=c(1, 10, 50, 100, 1000)))
+```
+
+```{r pk_pd_covalent_plot, fig.height=3, fig.width=5}
+cov_pk_pd_plot <- ggplot(cov_pk_pd,
+                         aes(x=time, y=Enzyme, col=turnover)) +
+  scale_color_manual(values=c("1"="#d7191c",
+                              "10"="#f46d43",
+                              "50" = "#C7B089",
+                              "100"="#74add1",
+                              "1000"="#2c7bb6"),
+                     name="Target half-life (hours)") +
+  geom_line(lwd=1) +
+  xlab("Time (hours)") +
+  ylab("Target abundance [%]") +
+  ylim(0,100)
+print(cov_pk_pd_plot)
+```
+
+## Covalent target turnover
+
+```{r target_halflife_anonym, fig.height=5, fig.width=7}
+load("data/2025-06-20-target-halflife-for-covalent.RData")
+target_halflife_anonym_plot_rev <- target_halflife_anonym_plot + ylab("Half-life (hours)")
+print(target_halflife_anonym_plot_rev)
+```
+
+
+```{r full_covalent_plot, fig.height=8, fig.width=7}
+## changing margins with theme(plot.margin=margin(...)): https://r-charts.com/ggplot2/margins/
+cov_pk_pd_plot_withMargins <- cov_pk_pd_plot +
+  theme(plot.margin = margin(l=1.8, r=1.8, unit="cm"))
+full_covalent_plot <- plot_grid(cov_pk_pd_plot_withMargins,
+                       target_halflife_anonym_plot_rev,
+                       rel_heights = c(3,5), label_size=18,
+                       labels=c("A", "B"), ncol=1)
+print(full_covalent_plot)
+```
+
+## Disclaimer
+
+Through out the code I have used large-language models to generate part of the code. I have checked their accuracy and edited them if necessary.
+
+## Session information
+
+```{r sessionInfo}
+sessionInfo()
+```
